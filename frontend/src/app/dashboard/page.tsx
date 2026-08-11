@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { ApiClient } from '@/lib/api';
 import KycWizard from '@/components/KycWizard';
-import { Link as LinkIcon, Key, ArrowClockwise, Sparkle } from '@phosphor-icons/react';
+import { Link as LinkIcon, Key, ArrowClockwise, Sparkle, CheckCircle, Warning, Receipt } from '@phosphor-icons/react';
 
 export default function DashboardPage() {
   const { isAuthenticated, isLoading, merchant, refreshProfile } = useAuth();
@@ -26,6 +26,9 @@ export default function DashboardPage() {
   const [generatedLink, setGeneratedLink] = useState<{ checkoutUrl: string; receiptUrl: string; reference: string } | null>(null);
   const [linkLoading, setLinkLoading] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
 
   const handleCreatePaymentLink = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,38 +183,42 @@ export default function DashboardPage() {
     );
   }
 
-  // ─── Active — Full Dashboard ────────────────────────────────────────────────
+  const itemsPerPage = 8;
+  const totalPages = Math.ceil(transactions.length / itemsPerPage) || 1;
+  const paginatedTransactions = transactions.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
   return (
-    <div className="max-w-7xl mx-auto px-6 py-10">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
       {/* Header */}
-      <div className="flex items-start justify-between mb-8 gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-          <p className="text-slate-400 text-sm mt-0.5">Welcome back, {merchant.business_name}</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-white">Dashboard</h1>
+          <p className="text-slate-400 text-xs sm:text-sm mt-0.5">Welcome back, {merchant.business_name}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
           <button
             onClick={() => setShowLinkModal(true)}
-            className="px-4 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 text-sm font-bold transition-all shadow-lg shadow-sky-500/20 flex items-center gap-2"
+            className="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs sm:text-sm font-bold transition-all shadow-lg shadow-sky-500/20 flex items-center justify-center gap-2"
           >
-            <LinkIcon size={18} weight="bold" /> Create Payment Link
+            <LinkIcon size={18} weight="bold" /> <span className="whitespace-nowrap">Payment Link</span>
           </button>
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 font-medium">
+          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 font-medium">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             Active
           </div>
           <button
             onClick={() => setShowApiKeyInput(!showApiKeyInput)}
-            className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium transition-all"
+            className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs sm:text-sm font-medium transition-all"
           >
-            {apiKey ? 'Change API Key' : 'Enter API Key'}
+            {apiKey ? 'Change Key' : 'Enter Key'}
           </button>
           {apiKey && (
             <button
               onClick={() => loadDashboardData(apiKey)}
-              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium transition-all"
+              className="p-2 sm:px-4 sm:py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs sm:text-sm font-medium transition-all flex items-center justify-center"
+              title="Refresh Data"
             >
-              Refresh
+              <ArrowClockwise size={16} weight="bold" />
             </button>
           )}
         </div>
@@ -219,20 +226,20 @@ export default function DashboardPage() {
 
       {/* API Key Banner Card */}
       {merchant.api_key && (
-        <div className="glass rounded-2xl border border-sky-500/30 p-5 mb-8 bg-sky-500/5">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="glass rounded-2xl border border-sky-500/30 p-4 sm:p-5 mb-6 sm:mb-8 bg-sky-500/5">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 sm:gap-4">
             <div>
-              <div className="flex items-center gap-2 text-sky-400 font-bold text-sm mb-1">
+              <div className="flex items-center gap-2 text-sky-400 font-bold text-xs sm:text-sm mb-1">
                 <Key size={18} weight="duotone" /> Your Secret API Key
               </div>
-              <p className="text-xs text-slate-400">
-                Use this API key to authenticate all request calls to <code>/v1/charge</code> and <code>/v1/transactions/verify</code>.
+              <p className="text-[11px] sm:text-xs text-slate-400">
+                Use this API key to authenticate calls to <code>/v1/charge</code> and <code>/v1/transactions/verify</code>.
               </p>
             </div>
             <div className="flex items-center gap-2 w-full md:w-auto">
               <input
                 type="text" readOnly value={merchant.api_key}
-                className="flex-1 md:w-80 px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs text-sky-300 select-all"
+                className="flex-1 md:w-80 px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs text-sky-300 select-all min-w-0"
               />
               <button
                 onClick={() => {
@@ -240,9 +247,9 @@ export default function DashboardPage() {
                   setCopiedKey(true);
                   setTimeout(() => setCopiedKey(false), 2000);
                 }}
-                className="px-4 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs transition-all shrink-0"
+                className="px-3.5 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs transition-all shrink-0"
               >
-                {copiedKey ? '✓ Copied' : 'Copy Key'}
+                {copiedKey ? '✓ Copied' : 'Copy'}
               </button>
             </div>
           </div>
@@ -288,7 +295,9 @@ export default function DashboardPage() {
             ) : (
               <div className="space-y-4">
                 <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center">
-                  <span className="text-3xl block mb-2">🎉</span>
+                  <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-2">
+                    <CheckCircle size={24} weight="fill" />
+                  </div>
                   <p className="font-bold text-emerald-400 text-sm">Payment Link Ready!</p>
                   <p className="text-xs text-slate-400 mt-1">Share this link directly with your customer to collect payment.</p>
                 </div>
@@ -488,15 +497,17 @@ export default function DashboardPage() {
                     Enter your API key above to view transactions
                   </td>
                 </tr>
-              ) : transactions.length === 0 ? (
+              ) : paginatedTransactions.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-16 text-center">
-                    <div className="text-3xl mb-3">📭</div>
+                    <div className="w-12 h-12 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center mx-auto mb-3">
+                      <Receipt size={24} weight="duotone" />
+                    </div>
                     <p className="text-slate-500 text-sm">No transactions yet. Use the charge API to start accepting payments.</p>
                   </td>
                 </tr>
               ) : (
-                transactions.map((tx) => (
+                paginatedTransactions.map((tx) => (
                   <tr key={tx.id} className="border-b border-slate-800/40 hover:bg-slate-800/20 transition-colors">
                     <td className="px-6 py-4 font-mono text-xs text-sky-400">{tx.reference}</td>
                     <td className="px-6 py-4 text-slate-400 text-xs">{tx.customer_email}</td>
@@ -517,6 +528,34 @@ export default function DashboardPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Footer */}
+        {transactions.length > itemsPerPage && (
+          <div className="px-6 py-4 border-t border-slate-800/60 flex items-center justify-between text-xs text-slate-400">
+            <span>
+              Showing <strong className="text-white">{(currentPage - 1) * itemsPerPage + 1}</strong> to <strong className="text-white">{Math.min(currentPage * itemsPerPage, transactions.length)}</strong> of <strong className="text-white">{transactions.length}</strong> transactions
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-slate-800 text-slate-300 font-medium transition-all"
+              >
+                Previous
+              </button>
+              <span className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 font-mono">
+                {currentPage} / {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-slate-800 text-slate-300 font-medium transition-all"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

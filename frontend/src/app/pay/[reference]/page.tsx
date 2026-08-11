@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Script from 'next/script';
+import { CheckCircle, Warning, Receipt, Lock, ShieldCheck } from '@phosphor-icons/react';
 
 export default function CheckoutPage({ params }: { params: Promise<{ reference: string }> | { reference: string } }) {
   const [reference, setReference] = useState<string>('');
@@ -114,14 +115,16 @@ export default function CheckoutPage({ params }: { params: Promise<{ reference: 
             </div>
           ) : error ? (
             <div className="py-8 space-y-4">
-              <div className="text-4xl">⚠️</div>
+              <div className="w-12 h-12 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center mx-auto">
+                <Warning size={32} weight="bold" />
+              </div>
               <h2 className="text-xl font-bold text-white">Payment Link Error</h2>
               <p className="text-slate-400 text-xs">{error}</p>
             </div>
           ) : paymentStatus === 'success' ? (
             <div className="py-8 space-y-4">
-              <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-3xl mx-auto">
-                ✓
+              <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
+                <CheckCircle size={40} weight="fill" />
               </div>
               <h2 className="text-2xl font-bold text-white">Payment Successful!</h2>
               <p className="text-slate-400 text-xs">
@@ -131,9 +134,9 @@ export default function CheckoutPage({ params }: { params: Promise<{ reference: 
                 <a
                   href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/v1'}/receipt/${reference}`}
                   target="_blank" rel="noopener noreferrer"
-                  className="w-full py-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs transition-all shadow-lg shadow-sky-500/20"
+                  className="w-full py-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs transition-all shadow-lg shadow-sky-500/20 flex items-center justify-center gap-2"
                 >
-                  🧾 View & Print Receipt
+                  <Receipt size={18} weight="bold" /> View & Print Receipt
                 </a>
               </div>
             </div>
@@ -163,11 +166,11 @@ export default function CheckoutPage({ params }: { params: Promise<{ reference: 
                 disabled={!scriptLoaded}
                 className="w-full py-4 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-sm transition-all shadow-lg shadow-sky-500/20 flex items-center justify-center gap-2 disabled:opacity-50"
               >
-                🔒 Pay ₦{Number(txDetails.amount_naira).toLocaleString('en-NG', { minimumFractionDigits: 2 })} Now
+                <Lock size={18} weight="bold" /> Pay ₦{Number(txDetails.amount_naira).toLocaleString('en-NG', { minimumFractionDigits: 2 })} Now
               </button>
 
               <div className="flex items-center justify-center gap-2 text-xs text-slate-500">
-                <span>🛡️ 256-Bit Encrypted Payment</span>
+                <span className="flex items-center gap-1.5"><ShieldCheck size={16} weight="duotone" className="text-sky-400" /> 256-Bit Encrypted Payment</span>
                 <span>•</span>
                 <span>Skrillpay PayEngine</span>
               </div>

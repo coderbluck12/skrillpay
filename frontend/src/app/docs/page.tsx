@@ -11,6 +11,10 @@ import {
   WarningOctagon,
   Flask,
   Key,
+  List,
+  ArrowRight,
+  ArrowUpRight,
+  Info,
 } from '@phosphor-icons/react';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/v1';
@@ -134,14 +138,19 @@ function EndpointCard({
 
           {auth && (
             <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/20 text-xs text-amber-400 flex items-start gap-2">
-              <span>🔑</span>
+              <Key size={16} weight="duotone" className="shrink-0 mt-0.5" />
               <span><strong>Authentication:</strong> {auth}</span>
             </div>
           )}
 
           {notes && notes.length > 0 && (
             <div className="p-3 rounded-xl bg-sky-500/5 border border-sky-500/20 text-xs text-sky-400 space-y-1">
-              {notes.map((n, i) => <p key={i}>ℹ️ {n}</p>)}
+              {notes.map((n, i) => (
+                <p key={i} className="flex items-center gap-1.5">
+                  <Info size={14} weight="duotone" className="shrink-0" />
+                  <span>{n}</span>
+                </p>
+              ))}
             </div>
           )}
 
@@ -234,7 +243,27 @@ export default function DocsPage() {
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-64px)]">
+    <div className="flex flex-col lg:flex-row min-h-[calc(100vh-64px)] relative">
+      {/* Mobile Top Navigation Bar */}
+      <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-slate-900/90 border-b border-slate-800 sticky top-16 z-30 backdrop-blur-md">
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800 text-sky-400 text-xs font-semibold hover:bg-slate-700 transition-all"
+        >
+          <List size={18} weight="bold" />
+          <span>Documentation Menu</span>
+        </button>
+        <span className="text-xs font-mono text-slate-400 capitalize">{activeSection.replace('-', ' ')}</span>
+      </div>
+
+      {/* Backdrop overlay for mobile sidebar */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-35 bg-slate-950/80 backdrop-blur-sm lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <aside className={`
         fixed inset-y-0 top-16 left-0 z-40 w-64 glass border-r border-slate-800/60 p-6
@@ -882,9 +911,9 @@ app.post('/webhooks/skrillpay', (req, res) => {
                         href={`${BASE_URL}/receipt/${receiptRef}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs text-sky-400 hover:text-sky-300 mt-2 inline-block"
+                        className="text-xs text-sky-400 hover:text-sky-300 mt-2 inline-flex items-center gap-1.5"
                       >
-                        🔗 Open HTML receipt in new tab →
+                        <ArrowUpRight size={14} weight="bold" /> Open HTML receipt in new tab
                       </a>
                     )}
                   </div>
@@ -916,7 +945,7 @@ app.post('/webhooks/skrillpay', (req, res) => {
                         rel="noopener noreferrer"
                         className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20 transition-all"
                       >
-                        💳 Open Skrillpay Checkout →
+                        <CreditCard size={16} weight="bold" /> Open Skrillpay Checkout <ArrowRight size={14} weight="bold" />
                       </a>
                     )}
                     {response?.data?.receipt_url && (
@@ -926,7 +955,7 @@ app.post('/webhooks/skrillpay', (req, res) => {
                         rel="noopener noreferrer"
                         className="mt-2 ml-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs font-semibold hover:bg-sky-500/20 transition-all"
                       >
-                        🧾 View Receipt →
+                        <Receipt size={16} weight="bold" /> View Receipt <ArrowRight size={14} weight="bold" />
                       </a>
                     )}
                   </div>

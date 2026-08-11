@@ -8,11 +8,7 @@ export default function Home() {
     <div className="relative overflow-hidden">
       {/* Hero */}
       <section className="max-w-7xl mx-auto px-6 pt-24 pb-20 text-center relative z-10">
-        {/* Badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-sky-500/30 bg-sky-500/5 text-sky-400 text-xs font-semibold mb-8 tracking-wide uppercase">
-          <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
-          Automated Merchant Settlement Engine
-        </div>
+
 
         {/* Headline */}
         <h1 className="text-5xl md:text-7xl font-black tracking-tight leading-[1.05] mb-6 max-w-5xl mx-auto">
