@@ -337,7 +337,7 @@ export default function DashboardPage() {
             <input
               type="text" value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              placeholder="sk_live_xxxxxxxxxxxxxxxx"
+              placeholder="sk_key_xxxxxxxxxxxxxxxx"
               className="flex-1 px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-sm font-mono placeholder-slate-600"
             />
             <button type="submit" className="px-5 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-sm transition-all">

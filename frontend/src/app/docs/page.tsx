@@ -287,7 +287,7 @@ export default function DocsPage() {
               <h2 className="font-bold text-white text-lg">Quick Integration Flow</h2>
               {[
                 { step: '1', title: 'Register & Verify Identity', desc: 'Sign up on the Skrillpay web portal and submit your settlement bank details along with BVN/NIN for automated identity verification.' },
-                { step: '2', title: 'Get Your API Key', desc: 'Upon activation, your settlement account and secret API Key (sk_live_...) will be issued.' },
+                { step: '2', title: 'Get Your API Key', desc: 'Upon activation, your settlement account and secret API Key (sk_key_...) will be issued.' },
                 { step: '3', title: 'Accept Payments', desc: 'Call POST /v1/charge with your API Key — redirect customers to checkout_url.' },
                 { step: '4', title: 'Verify & Generate Receipts', desc: 'Call GET /v1/transactions/verify/:ref or access /v1/receipt/:ref to issue digital receipts to customers.' },
               ].map((s) => (
@@ -315,8 +315,8 @@ export default function DocsPage() {
                   </div>
                   <div>
                     <p className="font-semibold text-white">API Key (Secret Key)</p>
-                    <p className="text-slate-400 text-xs mt-0.5">All developer endpoints (charging, verifying transactions) require your secret API key passed in the <code className="text-sky-400">Authorization</code> header. API keys start with <code className="text-sky-400">sk_live_</code> or <code className="text-sky-400">sk_test_</code>.</p>
-                    <CodeBlock code={`Authorization: Bearer sk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`} />
+                    <p className="text-slate-400 text-xs mt-0.5">All developer endpoints (charging, verifying transactions) require your secret API key passed in the <code className="text-sky-400">Authorization</code> header. API keys start with <code className="text-sky-400">sk_key_</code> or <code className="text-sky-400">sk_test_</code>.</p>
+                    <CodeBlock code={`Authorization: Bearer sk_key_sample_key_string_placeholder`} />
                   </div>
                 </div>
               </div>
@@ -376,7 +376,7 @@ export default function DocsPage() {
             <EndpointCard
               method="POST" path="/v1/charge"
               description="Initialize a Skrillpay payment transaction. Returns a checkout_url to redirect your customer to your branded payment page. Also returns a receipt_url you can share with the customer after payment."
-              auth="API Key required — Authorization: Bearer sk_live_xxxx"
+              auth="API Key required — Authorization: Bearer sk_key_xxxx"
               params={[
                 { name: 'amount', type: 'number', required: true, desc: 'Amount in kobo (NGN). e.g. 500000 = ₦5,000. Must be a positive integer.' },
                 { name: 'email', type: 'string', required: true, desc: "Customer's email address. Used to identify the payer." },
@@ -384,7 +384,7 @@ export default function DocsPage() {
                 { name: 'callback_url', type: 'string', required: false, desc: 'Override the default callback URL for this transaction only.' },
               ]}
               requestBody={`POST /v1/charge
-Authorization: Bearer sk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Authorization: Bearer sk_key_sample_key_string_placeholder
 Content-Type: application/json
 
 {
@@ -460,7 +460,7 @@ async function createPayment(orderId, customerEmail, amountNaira) {
                 { name: 'reference', type: 'string (path)', required: true, desc: 'The transaction reference from the charge response.' },
               ]}
               requestBody={`GET /v1/transactions/verify/ORDER_20260101_001
-Authorization: Bearer sk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`}
+Authorization: Bearer sk_key_sample_key_string_placeholder`}
               responseBody={`{
   "status": true,
   "message": "Transaction verification completed",
@@ -810,7 +810,7 @@ app.post('/webhooks/skrillpay', (req, res) => {
                     <input
                       type="text" value={apiKey}
                       onChange={(e) => setApiKey(e.target.value)}
-                      placeholder="sk_live_xxxxxxxxxxxxxxxx"
+                      placeholder="sk_key_xxxxxxxxxxxxxxxx"
                       className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-xs font-mono placeholder-slate-600"
                     />
                   </div>

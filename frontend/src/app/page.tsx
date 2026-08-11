@@ -63,7 +63,7 @@ export default function Home() {
             <span style={{ color: '#f59e0b' }}>-X POST</span>{' '}
             <span style={{ color: '#34d399' }}>https://api.skrillpay.com/v1/charge</span>{' '}
             <span style={{ color: '#94a3b8' }}>-H</span>{' '}
-            <span style={{ color: '#f1f5f9' }}>"Authorization: Bearer sk_live_..."</span>{' '}
+            <span style={{ color: '#f1f5f9' }}>"Authorization: Bearer sk_key_..."</span>{' '}
             <span style={{ color: '#94a3b8' }}>-d</span>{' '}
             <span style={{ color: '#f1f5f9' }}>{'\'{"amount":500000,"email":"buyer@gmail.com","reference":"REF_12345"}\''}</span>{'\n\n'}
             <span style={{ color: '#64748b' }}># Returns your branded checkout URL for payment</span>
