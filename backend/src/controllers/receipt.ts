@@ -20,7 +20,6 @@ function buildReceiptHtml(data: {
   currency: string;
   business_name: string;
   created_at: string;
-  paystack_reference?: string;
 }): string {
   const isPaid = data.status === 'success';
   const statusColor = isPaid ? '#22c55e' : data.status === 'pending' ? '#f59e0b' : '#ef4444';
@@ -189,11 +188,6 @@ function buildReceiptHtml(data: {
             <span class="detail-label">Reference</span>
             <span class="detail-value mono">${data.reference}</span>
           </div>
-          ${data.paystack_reference ? `
-          <div class="detail-row">
-            <span class="detail-label">Paystack Ref</span>
-            <span class="detail-value mono">${data.paystack_reference}</span>
-          </div>` : ''}
           <div class="detail-row">
             <span class="detail-label">Date</span>
             <span class="detail-value">${date}</span>
@@ -236,7 +230,7 @@ function buildReceiptHtml(data: {
         <p>This is an official payment receipt from <a href="#">Skrillpay</a>.</p>
         <p style="margin-top:4px">Keep this for your records — Reference: <strong>${data.reference}</strong></p>
         <div class="watermark">
-          <span>Powered by Skrillpay &times; Paystack</span>
+          <span>Powered by Skrillpay PayEngine</span>
         </div>
       </div>
     </div>

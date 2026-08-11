@@ -64,6 +64,9 @@ CREATE TABLE IF NOT EXISTS transactions (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS korapay_reference TEXT;
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS paystack_reference TEXT;
+
 CREATE TABLE IF NOT EXISTS webhook_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   paystack_event_id TEXT UNIQUE NOT NULL,

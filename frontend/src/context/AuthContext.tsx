@@ -52,12 +52,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = await ApiClient.getMe(jwt);
       if (data.status && data.data) {
         setMerchant(data.data);
-      } else {
-        // Token is invalid — clear session
+      } else if (data.status === false && (data.message === 'Invalid authentication token' || data.message === 'Authentication token required')) {
+        // Token explicitly rejected by backend — clear session
         clearSession();
       }
     } catch {
-      clearSession();
+      // Network/server offline error — keep stored token so user remains logged in
     }
   };
 

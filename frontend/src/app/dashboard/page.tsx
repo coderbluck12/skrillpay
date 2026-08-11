@@ -21,7 +21,7 @@ export default function DashboardPage() {
 
   // Payment Link modal state
   const [showLinkModal, setShowLinkModal] = useState(false);
-  const [linkAmount, setLinkAmount] = useState(5000);
+  const [linkAmountNaira, setLinkAmountNaira] = useState(5000);
   const [linkCustomerEmail, setLinkCustomerEmail] = useState('');
   const [generatedLink, setGeneratedLink] = useState<{ checkoutUrl: string; receiptUrl: string; reference: string } | null>(null);
   const [linkLoading, setLinkLoading] = useState(false);
@@ -29,8 +29,10 @@ export default function DashboardPage() {
 
   const handleCreatePaymentLink = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!apiKey) {
-      alert('Please enter your API key first to generate payment links');
+    const activeKey = apiKey || merchant?.api_key || localStorage.getItem('merchant_api_key') || '';
+
+    if (!activeKey) {
+      alert('Please copy or enter your Secret API key first to generate payment links');
       setShowApiKeyInput(true);
       return;
     }
@@ -39,8 +41,9 @@ export default function DashboardPage() {
     setError(null);
     try {
       const ref = `LINK_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-      const result = await ApiClient.initializeCharge(apiKey, {
-        amount: Number(linkAmount),
+      const amountInKobo = Math.round(Number(linkAmountNaira) * 100);
+      const result = await ApiClient.initializeCharge(activeKey, {
+        amount: amountInKobo,
         email: linkCustomerEmail || 'customer@skrillpay.com',
         reference: ref,
       });
@@ -71,13 +74,14 @@ export default function DashboardPage() {
   // Load dashboard data when merchant is active
   useEffect(() => {
     if (merchant?.kyc_status === 'active') {
-      const activeKey = merchant.api_key || apiKey || localStorage.getItem('merchant_api_key') || '';
+      const activeKey = merchant.api_key || localStorage.getItem('merchant_api_key') || apiKey || '';
       if (activeKey) {
-        if (!apiKey) setApiKey(activeKey);
+        setApiKey(activeKey);
+        localStorage.setItem('merchant_api_key', activeKey);
         loadDashboardData(activeKey);
       }
     }
-  }, [merchant?.kyc_status, merchant?.api_key, apiKey]);
+  }, [merchant?.kyc_status, merchant?.api_key]);
 
   const loadDashboardData = async (key: string) => {
     setDataLoading(true);
@@ -257,13 +261,13 @@ export default function DashboardPage() {
             {!generatedLink ? (
               <form onSubmit={handleCreatePaymentLink} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Amount (in Kobo or subunits)</label>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Amount (in Naira ₦)</label>
                   <input
-                    type="number" required value={linkAmount}
-                    onChange={(e) => setLinkAmount(Number(e.target.value))}
+                    type="number" required min="100" value={linkAmountNaira}
+                    onChange={(e) => setLinkAmountNaira(Number(e.target.value))}
                     className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-sm"
                   />
-                  <p className="text-xs text-slate-500 mt-1">= ₦{(linkAmount / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</p>
+                  <p className="text-xs text-slate-500 mt-1">Formatted: ₦{Number(linkAmountNaira).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</p>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Customer Email (optional)</label>
@@ -393,17 +397,63 @@ export default function DashboardPage() {
 
       {/* Integration Settings Card */}
       <div className="glass rounded-2xl border border-slate-800/60 p-6 mb-6">
-        <h3 className="font-bold text-white mb-4">Integration Settings</h3>
-        <div className="grid md:grid-cols-2 gap-4 text-sm">
+        <div className="flex justify-between items-center mb-4">
           <div>
-            <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-1">Webhook URL</p>
-            <p className="font-mono text-slate-300 text-xs truncate">{merchant.webhook_url || '—'}</p>
-          </div>
-          <div>
-            <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-1">Callback URL</p>
-            <p className="font-mono text-slate-300 text-xs truncate">{merchant.callback_url || '—'}</p>
+            <h3 className="font-bold text-white text-lg">Integration Settings</h3>
+            <p className="text-xs text-slate-400">Configure where payment notifications (webhooks) and user redirects (callback) are sent.</p>
           </div>
         </div>
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const form = e.target as HTMLFormElement;
+            const webhookUrl = (form.elements.namedItem('webhook_url') as HTMLInputElement).value;
+            const callbackUrl = (form.elements.namedItem('callback_url') as HTMLInputElement).value;
+            try {
+              const res = await ApiClient.updateWebhookSettings({ webhook_url: webhookUrl, callback_url: callbackUrl });
+              if (res.status) {
+                alert('Integration settings updated successfully');
+                refreshProfile();
+              } else {
+                alert(res.message || 'Failed to update settings');
+              }
+            } catch (err: any) {
+              alert(err.message || 'Error updating settings');
+            }
+          }}
+          className="space-y-4 text-sm"
+        >
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs text-slate-400 uppercase tracking-wider font-semibold mb-1">Webhook URL</label>
+              <input
+                type="url" name="webhook_url"
+                defaultValue={merchant.webhook_url || ''}
+                placeholder="https://yourdomain.com/api/webhooks/skrillpay"
+                className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 font-mono text-xs text-slate-100 placeholder-slate-600"
+              />
+              <p className="text-[11px] text-slate-500 mt-1">We send transaction event payloads to this URL.</p>
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 uppercase tracking-wider font-semibold mb-1">Default Callback URL</label>
+              <input
+                type="url" name="callback_url"
+                defaultValue={merchant.callback_url || ''}
+                placeholder="https://yourdomain.com/payment/complete"
+                className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 font-mono text-xs text-slate-100 placeholder-slate-600"
+              />
+              <p className="text-[11px] text-slate-500 mt-1">Redirect customers here after payment completion.</p>
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              className="px-5 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs transition-all shadow-md shadow-sky-500/20"
+            >
+              Save Integration Settings
+            </button>
+          </div>
+        </form>
       </div>
 
       {/* Transactions Table */}

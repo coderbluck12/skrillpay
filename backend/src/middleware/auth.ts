@@ -27,7 +27,7 @@ export async function authenticateApiKey(
 
   try {
     const keyHash = AuthUtils.hashApiKey(rawApiKey);
-    const result = await db.query('SELECT * FROM users WHERE api_key_hash = $1', [keyHash]);
+    let result = await db.query('SELECT * FROM users WHERE api_key_hash = $1 OR api_key = $2', [keyHash, rawApiKey]);
 
     if (result.rows.length === 0) {
       res.status(401).json({ status: false, message: 'Unauthorized: Invalid API key' });
@@ -36,7 +36,7 @@ export async function authenticateApiKey(
 
     const merchant: User = result.rows[0];
 
-    if (merchant.status === 'suspended') {
+    if (merchant.status === 'suspended' || merchant.kyc_status === 'suspended') {
       res.status(403).json({ status: false, message: 'Forbidden: Merchant account is suspended' });
       return;
     }
