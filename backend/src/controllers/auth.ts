@@ -167,8 +167,8 @@ export class AuthController {
       const result = await db.query(
         `SELECT
           id, email, business_name, kyc_status, kyc_data, kyc_submitted_at, kyc_approved_at,
-          paystack_subaccount_code, bank_account_number, bank_code, account_name,
-          fee_type, fee_value, webhook_url, callback_url, is_admin, created_at,
+          paystack_subaccount_code, korapay_subaccount_code, bank_account_number, bank_code, account_name,
+          fee_type, fee_value, webhook_url, callback_url, is_admin, created_at, api_key,
           CASE WHEN api_key_hash IS NOT NULL THEN true ELSE false END as has_api_key
         FROM users WHERE id = $1`,
         [req.jwtUser!.userId]
@@ -179,7 +179,21 @@ export class AuthController {
         return;
       }
 
-      res.status(200).json({ status: true, data: result.rows[0] });
+      const user = result.rows[0];
+
+      // Auto-issue an API Key for active merchants approved before this feature was introduced
+      if (user.kyc_status === 'active' && (!user.api_key || !user.api_key_hash)) {
+        const { AuthUtils } = require('../utils/auth');
+        const { rawKey, keyHash } = AuthUtils.generateApiKey(false);
+        await db.query(
+          `UPDATE users SET api_key = $1, api_key_hash = $2, api_key_generated_at = NOW() WHERE id = $3`,
+          [rawKey, keyHash, user.id]
+        );
+        user.api_key = rawKey;
+        user.has_api_key = true;
+      }
+
+      res.status(200).json({ status: true, data: user });
     } catch (error: any) {
       console.error('Me endpoint error:', error);
       res.status(500).json({ status: false, message: 'Failed to fetch profile' });

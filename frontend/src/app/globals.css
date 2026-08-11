@@ -99,6 +99,20 @@ html.light .border-slate-900 {
   border-color: #cbd5e1 !important;
 }
 
+/* Light mode modal backdrop & card contrast refinements */
+html.light .fixed.inset-0 {
+  background: rgba(15, 23, 42, 0.4) !important;
+}
+
+html.light table th {
+  color: #64748b !important;
+}
+
+html.light pre {
+  background-color: #0f172a !important;
+  color: #38bdf8 !important;
+}
+
 /* Gradient text utility */
 .gradient-text {
   background: linear-gradient(135deg, #0284c7 0%, #6366f1 50%, #059669 100%);

@@ -1,8 +1,10 @@
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import db from '../db';
-import { PaystackService } from '../integrations/paystack';
+import { KorapayService } from '../integrations/korapay';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { ChargeDTO } from '../types';
+
+const platformBaseUrl = process.env.API_BASE_URL || 'http://localhost:3000';
 
 export class PaymentController {
   public static async initializeCharge(req: AuthenticatedRequest, res: Response): Promise<void> {
@@ -19,19 +21,18 @@ export class PaymentController {
       return;
     }
 
-    if (!merchant.paystack_subaccount_code) {
-      res.status(400).json({ status: false, message: 'Merchant paystack subaccount is missing or incomplete' });
-      return;
-    }
+    const subaccountCode = (merchant as any).korapay_subaccount_code || merchant.paystack_subaccount_code;
 
-    const amountInKobo = Number.isInteger(amount) ? amount : Math.round(amount * 100);
-    
+    // Amount conversion: if sent in Kobo (e.g. 500000), convert to Naira (5000) for Korapay
+    const amountInNaira = amount > 10000 && Number.isInteger(amount) ? amount / 100 : amount;
+    const amountInKobo = Math.round(amountInNaira * 100);
+
     let platformFeeInKobo = 0;
     if (merchant.fee_type === 'percentage') {
       platformFeeInKobo = Math.round(amountInKobo * (Number(merchant.fee_value) / 100));
     } else {
-      platformFeeInKobo = Number.isInteger(merchant.fee_value) 
-        ? Number(merchant.fee_value) 
+      platformFeeInKobo = Number.isInteger(merchant.fee_value)
+        ? Number(merchant.fee_value)
         : Math.round(Number(merchant.fee_value) * 100);
     }
 
@@ -44,36 +45,42 @@ export class PaymentController {
         return;
       }
 
-      // Callback URL chaining:
-      // Paystack will call our platform's callback, which then redirects to merchant's callback.
-      // Priority: 1. Per-request callback_url  2. Merchant's stored callback_url
+      // Callback URL chaining
       const merchantCallbackUrl = callback_url || (merchant as any).callback_url;
-      const platformBaseUrl = process.env.API_BASE_URL || 'http://localhost:3000';
       const platformCallbackUrl = `${platformBaseUrl}/v1/payment/callback?ref=${reference}${merchantCallbackUrl ? `&redirect_url=${encodeURIComponent(merchantCallbackUrl)}` : ''}`;
 
-      const paystackData = await PaystackService.initializeTransaction({
-        email,
-        amount: amountInKobo,
+      const koraData = await KorapayService.initializeCharge({
         reference,
-        subaccount: merchant.paystack_subaccount_code,
-        transaction_charge: platformFeeInKobo,
-        callback_url: platformCallbackUrl,
+        amount: amountInNaira,
+        currency: 'NGN',
+        customer: {
+          name: merchant.business_name,
+          email,
+        },
+        subaccount_code: subaccountCode || undefined,
+        redirect_url: platformCallbackUrl,
+        notification_url: `${platformBaseUrl}/v1/webhooks/korapay`,
       });
 
       await db.query(
         `INSERT INTO transactions (
-          user_id, reference, amount, platform_fee, merchant_amount, currency, status, customer_email
-        ) VALUES ($1, $2, $3, $4, $5, 'NGN', 'pending', $6)`,
-        [merchant.id, reference, amountInKobo, platformFeeInKobo, merchantAmountInKobo, email]
+          user_id, reference, amount, platform_fee, merchant_amount, currency, status, customer_email, korapay_reference
+        ) VALUES ($1, $2, $3, $4, $5, 'NGN', 'pending', $6, $7)`,
+        [merchant.id, reference, amountInKobo, platformFeeInKobo, merchantAmountInKobo, email, koraData.checkout_url || reference]
       );
+
+      const frontendBaseUrl = process.env.FRONTEND_BASE_URL || 'http://localhost:3001';
+      const brandedCheckoutUrl = `${frontendBaseUrl}/pay/${reference}`;
 
       res.status(200).json({
         status: true,
         message: 'Transaction initialized successfully',
         data: {
-          authorization_url: paystackData.authorization_url,
-          access_code: paystackData.access_code,
-          reference: paystackData.reference || reference,
+          authorization_url: brandedCheckoutUrl,
+          checkout_url: brandedCheckoutUrl,
+          access_code: reference,
+          reference,
+          receipt_url: `${platformBaseUrl}/v1/receipt/${reference}`,
         },
       });
     } catch (error: any) {
@@ -91,22 +98,22 @@ export class PaymentController {
     }
 
     try {
-      const paystackData = await PaystackService.verifyTransaction(reference);
-      const paystackStatus = paystackData.status;
+      const koraData = await KorapayService.verifyTransaction(reference);
+      const koraStatus = koraData.status || koraData.transaction_status;
 
       let dbStatus: 'pending' | 'success' | 'failed' = 'pending';
-      if (paystackStatus === 'success') {
+      if (koraStatus === 'success' || koraStatus === 'successful') {
         dbStatus = 'success';
-      } else if (paystackStatus === 'failed' || paystackStatus === 'abandoned') {
+      } else if (koraStatus === 'failed' || koraStatus === 'expired') {
         dbStatus = 'failed';
       }
 
       const updateResult = await db.query(
         `UPDATE transactions
-         SET status = $1, paystack_reference = $2, updated_at = NOW()
+         SET status = $1, korapay_reference = $2, updated_at = NOW()
          WHERE reference = $3
          RETURNING *`,
-        [dbStatus, paystackData.reference || paystackData.id, reference]
+        [dbStatus, koraData.reference || reference, reference]
       );
 
       const transaction = updateResult.rows[0];
@@ -115,8 +122,9 @@ export class PaymentController {
         status: true,
         message: 'Transaction verification completed',
         data: {
-          paystack_data: paystackData,
+          korapay_data: koraData,
           transaction: transaction || null,
+          receipt_url: transaction ? `${platformBaseUrl}/v1/receipt/${reference}` : null,
         },
       });
     } catch (error: any) {
@@ -127,9 +135,6 @@ export class PaymentController {
 
   /**
    * GET /v1/payment/callback
-   * Paystack redirects here after payment. We verify the transaction, then redirect
-   * to the merchant's own callback URL with the result appended as query params.
-   * This is the callback URL chaining mechanism.
    */
   public static async handleCallback(req: Request, res: Response): Promise<void> {
     const { ref, redirect_url } = req.query as { ref?: string; redirect_url?: string };
@@ -140,30 +145,24 @@ export class PaymentController {
     }
 
     try {
-      // Verify the transaction with Paystack
-      const paystackData = await PaystackService.verifyTransaction(ref);
-      const paystackStatus = paystackData.status;
+      const koraData = await KorapayService.verifyTransaction(ref);
+      const koraStatus = koraData.status || koraData.transaction_status;
 
       let dbStatus: 'pending' | 'success' | 'failed' = 'pending';
-      if (paystackStatus === 'success') dbStatus = 'success';
-      else if (paystackStatus === 'failed' || paystackStatus === 'abandoned') dbStatus = 'failed';
+      if (koraStatus === 'success' || koraStatus === 'successful') dbStatus = 'success';
+      else if (koraStatus === 'failed' || koraStatus === 'expired') dbStatus = 'failed';
 
-      // Update DB
       await db.query(
-        `UPDATE transactions SET status = $1, paystack_reference = $2, updated_at = NOW()
+        `UPDATE transactions SET status = $1, korapay_reference = $2, updated_at = NOW()
          WHERE reference = $3`,
-        [dbStatus, paystackData.id || paystackData.reference, ref]
+        [dbStatus, koraData.reference || ref, ref]
       );
 
-      console.log(`[Callback] Transaction [${ref}] → ${dbStatus}`);
-
-      // Redirect to merchant's callback URL with payment result appended
       if (redirect_url) {
         const separator = redirect_url.includes('?') ? '&' : '?';
         const finalUrl = `${redirect_url}${separator}reference=${ref}&status=${dbStatus}&trxref=${ref}`;
         res.redirect(302, finalUrl);
       } else {
-        // No merchant callback — return JSON (useful for testing)
         res.status(200).json({
           status: true,
           message: 'Payment callback processed',

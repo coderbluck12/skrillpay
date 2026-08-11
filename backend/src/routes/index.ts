@@ -5,6 +5,7 @@ import { WebhookController } from '../controllers/webhook';
 import { DashboardController } from '../controllers/dashboard';
 import { AuthController } from '../controllers/auth';
 import { KycController, AdminKycController } from '../controllers/kyc';
+import { ReceiptController } from '../controllers/receipt';
 import { authenticateApiKey } from '../middleware/auth';
 import { authenticateJwt, requireAdmin } from '../middleware/jwtAuth';
 
@@ -47,8 +48,15 @@ router.get('/dashboard/balance', authenticateApiKey as any, DashboardController.
 router.get('/payment/callback', PaymentController.handleCallback as any);
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Paystack Webhook (public — Paystack sends events here)
+// Receipt Routes (public — anyone with the reference can view/download)
 // ─────────────────────────────────────────────────────────────────────────────
+router.get('/receipt/:reference', ReceiptController.getReceipt as any);
+router.get('/receipt/:reference/download', ReceiptController.downloadReceipt as any);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Korapay & Paystack Webhooks (public — gateways send events here)
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/webhooks/korapay', raw({ type: 'application/json' }), WebhookController.handleWebhook);
 router.post('/webhooks/paystack', raw({ type: 'application/json' }), WebhookController.handleWebhook);
 
 // ─────────────────────────────────────────────────────────────────────────────

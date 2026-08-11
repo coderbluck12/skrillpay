@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ApiClient } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
+import { Bank, IdentificationCard, CheckCircle, Lightning } from '@phosphor-icons/react';
 
 const BANKS = [
   { name: 'Zenith Bank', code: '057' },
@@ -23,23 +24,17 @@ interface KycWizardProps {
   onComplete: () => void;
 }
 
-type Step = 'business' | 'bank' | 'identity' | 'settings' | 'review';
+type Step = 'bank' | 'identity' | 'review';
 
-const steps: { key: Step; label: string; icon: string }[] = [
-  { key: 'business', label: 'Business', icon: '🏢' },
-  { key: 'bank', label: 'Bank', icon: '🏦' },
-  { key: 'identity', label: 'Identity', icon: '🪪' },
-  { key: 'settings', label: 'Settings', icon: '⚙️' },
-  { key: 'review', label: 'Review', icon: '✓' },
+const steps: { key: Step; label: string; IconComponent: any }[] = [
+  { key: 'bank', label: 'Settlement Bank', IconComponent: Bank },
+  { key: 'identity', label: 'Identity (BVN/NIN)', IconComponent: IdentificationCard },
+  { key: 'review', label: 'Review & Activate', IconComponent: CheckCircle },
 ];
 
 export default function KycWizard({ onComplete }: KycWizardProps) {
   const { refreshProfile } = useAuth();
-  const [currentStep, setCurrentStep] = useState<Step>('business');
-
-  // Business info
-  const [registrationNumber, setRegistrationNumber] = useState('');
-  const [taxId, setTaxId] = useState('');
+  const [currentStep, setCurrentStep] = useState<Step>('bank');
 
   // Bank details
   const [bankAccountNumber, setBankAccountNumber] = useState('');
@@ -47,7 +42,7 @@ export default function KycWizard({ onComplete }: KycWizardProps) {
   const [feeType, setFeeType] = useState<'percentage' | 'flat'>('percentage');
   const [feeValue, setFeeValue] = useState(1.5);
 
-  // Identity
+  // Identity (BVN / NIN only - simplified)
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
@@ -75,12 +70,16 @@ export default function KycWizard({ onComplete }: KycWizardProps) {
   };
 
   const handleSubmit = async () => {
+    if (!bvn && !nin) {
+      setError('Please provide at least a BVN or NIN for instant identity verification');
+      setCurrentStep('identity');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
       const result = await ApiClient.submitKyc({
-        registration_number: registrationNumber || undefined,
-        tax_id: taxId || undefined,
         bank_account_number: bankAccountNumber,
         bank_code: bankCode,
         fee_type: feeType,
@@ -107,73 +106,48 @@ export default function KycWizard({ onComplete }: KycWizardProps) {
 
   return (
     <div className="max-w-2xl mx-auto">
-      {/* Step Progress */}
-      <div className="flex items-center mb-10">
-        {steps.map((step, i) => (
-          <div key={step.key} className="flex items-center flex-1 last:flex-none">
-            <button
-              onClick={() => i < currentIndex && setCurrentStep(step.key)}
-              className={`flex flex-col items-center gap-1 ${i < currentIndex ? 'cursor-pointer' : 'cursor-default'}`}
-            >
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold transition-all ${
-                i < currentIndex ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
-                i === currentIndex ? 'bg-sky-500 text-slate-950 shadow-lg shadow-sky-500/30' :
-                'bg-slate-800 text-slate-500 border border-slate-700'
-              }`}>
-                {i < currentIndex ? '✓' : step.icon}
-              </div>
-              <span className={`text-xs font-medium hidden sm:block ${
-                i === currentIndex ? 'text-sky-400' : i < currentIndex ? 'text-emerald-400' : 'text-slate-500'
-              }`}>{step.label}</span>
-            </button>
-            {i < steps.length - 1 && (
-              <div className={`flex-1 h-0.5 mx-2 transition-all ${i < currentIndex ? 'bg-emerald-500/30' : 'bg-slate-800'}`} />
-            )}
-          </div>
-        ))}
+      {/* Step Progress Bar */}
+      <div className="flex items-center mb-8">
+        {steps.map((step, i) => {
+          const StepIcon = step.IconComponent;
+          return (
+            <div key={step.key} className="flex items-center flex-1 last:flex-none">
+              <button
+                onClick={() => i < currentIndex && setCurrentStep(step.key)}
+                className={`flex flex-col items-center gap-1 ${i < currentIndex ? 'cursor-pointer' : 'cursor-default'}`}
+              >
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold transition-all ${
+                  i < currentIndex ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                  i === currentIndex ? 'bg-sky-500 text-slate-950 shadow-lg shadow-sky-500/30' :
+                  'bg-slate-800 text-slate-500 border border-slate-700'
+                }`}>
+                  {i < currentIndex ? (
+                    <CheckCircle size={20} weight="fill" className="text-emerald-400" />
+                  ) : (
+                    <StepIcon size={20} weight={i === currentIndex ? 'bold' : 'regular'} />
+                  )}
+                </div>
+                <span className={`text-xs font-medium hidden sm:block ${
+                  i === currentIndex ? 'text-sky-400' : i < currentIndex ? 'text-emerald-400' : 'text-slate-500'
+                }`}>{step.label}</span>
+              </button>
+              {i < steps.length - 1 && (
+                <div className={`flex-1 h-0.5 mx-3 transition-all ${i < currentIndex ? 'bg-emerald-500/30' : 'bg-slate-800'}`} />
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Step Content */}
       <div className="glass rounded-2xl border border-slate-800/60 p-8">
 
-        {/* Step 1: Business Info */}
-        {currentStep === 'business' && (
-          <div className="space-y-5">
-            <div>
-              <h3 className="text-lg font-bold text-white mb-1">Business Information</h3>
-              <p className="text-slate-400 text-sm">Provide your business registration details.</p>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                CAC Registration Number <span className="text-slate-600 normal-case">(optional)</span>
-              </label>
-              <input type="text" value={registrationNumber}
-                onChange={(e) => setRegistrationNumber(e.target.value)}
-                placeholder="RC1234567"
-                className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 placeholder-slate-600 text-sm" />
-              <p className="text-xs text-slate-500 mt-1">Your Corporate Affairs Commission registration number</p>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                Tax ID / TIN <span className="text-slate-600 normal-case">(optional)</span>
-              </label>
-              <input type="text" value={taxId}
-                onChange={(e) => setTaxId(e.target.value)}
-                placeholder="0123456-0001"
-                className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 placeholder-slate-600 text-sm" />
-            </div>
-            <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/20 text-xs text-amber-400">
-              💡 Business registration details are optional for the MVP but required at scale for compliance.
-            </div>
-          </div>
-        )}
-
-        {/* Step 2: Bank Account */}
+        {/* Step 1: Settlement Bank */}
         {currentStep === 'bank' && (
           <div className="space-y-5">
             <div>
               <h3 className="text-lg font-bold text-white mb-1">Settlement Bank Account</h3>
-              <p className="text-slate-400 text-sm">This is where Paystack will settle your customer payments.</p>
+              <p className="text-slate-400 text-sm">Where your customer payouts and earnings will be deposited.</p>
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
@@ -186,7 +160,7 @@ export default function KycWizard({ onComplete }: KycWizardProps) {
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                Settlement Bank <span className="text-red-400">*</span>
+                Bank Name <span className="text-red-400">*</span>
               </label>
               <select value={bankCode} onChange={(e) => setBankCode(e.target.value)}
                 className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-sm">
@@ -197,7 +171,7 @@ export default function KycWizard({ onComplete }: KycWizardProps) {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Platform Fee Type</label>
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Platform Fee Model</label>
                 <select value={feeType} onChange={(e: any) => setFeeType(e.target.value)}
                   className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-sm">
                   <option value="percentage">Percentage (%)</option>
@@ -213,20 +187,15 @@ export default function KycWizard({ onComplete }: KycWizardProps) {
                   className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-sm" />
               </div>
             </div>
-            {!bankAccountNumber && (
-              <div className="p-3 rounded-xl bg-red-500/5 border border-red-500/20 text-xs text-red-400">
-                Account number and bank are required to proceed.
-              </div>
-            )}
           </div>
         )}
 
-        {/* Step 3: Identity */}
+        {/* Step 2: Instant Identity Verification (BVN / NIN) */}
         {currentStep === 'identity' && (
           <div className="space-y-5">
             <div>
-              <h3 className="text-lg font-bold text-white mb-1">Director Identity</h3>
-              <p className="text-slate-400 text-sm">Identity details of the primary business director.</p>
+              <h3 className="text-lg font-bold text-white mb-1">Instant Identity Verification</h3>
+              <p className="text-slate-400 text-sm">Automated verification for instant account activation.</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -241,81 +210,44 @@ export default function KycWizard({ onComplete }: KycWizardProps) {
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Phone Number</label>
-              <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="08012345678"
-                className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 placeholder-slate-600 text-sm" />
-            </div>
-            <div>
               <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                BVN <span className="text-slate-600 normal-case">(Bank Verification Number)</span>
+                BVN <span className="text-emerald-400 font-normal">(Bank Verification Number)</span>
               </label>
               <input type="text" maxLength={11} value={bvn} onChange={(e) => setBvn(e.target.value)} placeholder="22312345678"
                 className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 placeholder-slate-600 text-sm font-mono" />
-              <p className="text-xs text-slate-500 mt-1">BVN is stored masked (last 4 digits only)</p>
+              <p className="text-xs text-slate-500 mt-1">Stored securely & masked (only last 4 digits visible)</p>
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                NIN <span className="text-slate-600 normal-case">(National Identification Number — optional)</span>
+                NIN <span className="text-slate-500 font-normal">(Optional alternative)</span>
               </label>
               <input type="text" maxLength={11} value={nin} onChange={(e) => setNin(e.target.value)} placeholder="12345678901"
                 className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 placeholder-slate-600 text-sm font-mono" />
             </div>
-          </div>
-        )}
-
-        {/* Step 4: Integration Settings */}
-        {currentStep === 'settings' && (
-          <div className="space-y-5">
-            <div>
-              <h3 className="text-lg font-bold text-white mb-1">Integration Settings</h3>
-              <p className="text-slate-400 text-sm">Optional — configure your webhook and payment callback URLs.</p>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                Webhook URL <span className="text-slate-600 normal-case">(receives payment events)</span>
-              </label>
-              <input type="url" value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)}
-                placeholder="https://yourapp.com/webhooks/payments"
-                className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 placeholder-slate-600 text-sm font-mono" />
-              <p className="text-xs text-slate-500 mt-1">We'll forward charge.success and charge.failed events signed with HMAC SHA-512</p>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                Payment Callback URL <span className="text-slate-600 normal-case">(redirect after checkout)</span>
-              </label>
-              <input type="url" value={callbackUrl} onChange={(e) => setCallbackUrl(e.target.value)}
-                placeholder="https://yourapp.com/payment/success"
-                className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 placeholder-slate-600 text-sm font-mono" />
-              <p className="text-xs text-slate-500 mt-1">After Paystack checkout, customers are redirected here with ?reference=&status= appended</p>
-            </div>
-            <div className="p-4 rounded-xl bg-sky-500/5 border border-sky-500/20 space-y-1 text-xs text-slate-400">
-              <p className="text-sky-400 font-medium">How webhook signing works:</p>
-              <p>Each event forwarded to your webhook URL will have a <code className="text-slate-300">x-skrillpay-signature</code> header with an HMAC-SHA512 signature. Your backend verifies this using the <code className="text-slate-300">PLATFORM_WEBHOOK_SECRET</code> we'll share after activation.</p>
+            <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20 text-xs text-emerald-400">
+              ⚡ Account verification completes instantly with zero paperwork required.
             </div>
           </div>
         )}
 
-        {/* Step 5: Review */}
+        {/* Step 3: Review */}
         {currentStep === 'review' && (
           <div className="space-y-5">
             <div>
-              <h3 className="text-lg font-bold text-white mb-1">Review & Submit</h3>
-              <p className="text-slate-400 text-sm">Confirm your details before submitting for review.</p>
+              <h3 className="text-lg font-bold text-white mb-1">Review & Activate</h3>
+              <p className="text-slate-400 text-sm">Confirm your details before activation.</p>
             </div>
 
             <div className="space-y-3 text-sm">
               {[
-                { label: 'CAC Number', value: registrationNumber || '—' },
-                { label: 'Tax ID', value: taxId || '—' },
-                { label: 'Bank Account', value: bankAccountNumber ? `****${bankAccountNumber.slice(-4)}` : '—' },
+                { label: 'Bank Account Number', value: bankAccountNumber ? `****${bankAccountNumber.slice(-4)}` : '—' },
                 { label: 'Settlement Bank', value: BANKS.find((b) => b.code === bankCode)?.name || bankCode },
-                { label: 'Platform Fee', value: `${feeValue}${feeType === 'percentage' ? '%' : '₦'} (${feeType})` },
+                { label: 'Fee Rate', value: `${feeValue}${feeType === 'percentage' ? '%' : '₦'} (${feeType})` },
                 { label: 'Director Name', value: `${firstName} ${lastName}`.trim() || '—' },
-                { label: 'BVN', value: bvn ? `****${bvn.slice(-4)}` : '—' },
-                { label: 'Webhook URL', value: webhookUrl || '—' },
-                { label: 'Callback URL', value: callbackUrl || '—' },
+                { label: 'BVN Status', value: bvn ? `****${bvn.slice(-4)} (Verified)` : '—' },
+                { label: 'NIN Status', value: nin ? `****${nin.slice(-4)}` : '—' },
               ].map((row) => (
-                <div key={row.label} className="flex justify-between py-2 border-b border-slate-800/60">
+                <div key={row.label} className="flex justify-between py-2.5 border-b border-slate-800/60">
                   <span className="text-slate-400">{row.label}</span>
                   <span className="text-slate-100 font-medium text-right max-w-xs truncate">{row.value}</span>
                 </div>
@@ -323,7 +255,7 @@ export default function KycWizard({ onComplete }: KycWizardProps) {
             </div>
 
             <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20 text-xs text-emerald-400">
-              ✅ After submission, our team will review your KYC and activate your account within 24 hours. You'll receive your API key upon activation.
+              ✅ Once submitted, your merchant settlement account is activated and your Secret API Key is issued.
             </div>
 
             {error && (
@@ -335,7 +267,7 @@ export default function KycWizard({ onComplete }: KycWizardProps) {
           </div>
         )}
 
-        {/* Navigation Buttons */}
+        {/* Action Controls */}
         <div className="flex justify-between mt-8 pt-6 border-t border-slate-800/60">
           <button onClick={goPrev} disabled={currentIndex === 0}
             className="px-5 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-all disabled:opacity-30 disabled:cursor-not-allowed">
@@ -357,9 +289,9 @@ export default function KycWizard({ onComplete }: KycWizardProps) {
               {loading ? (
                 <span className="flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-slate-950/30 border-t-slate-950 rounded-full animate-spin" />
-                  Submitting...
+                  Verifying Identity...
                 </span>
-              ) : 'Submit KYC for Review'}
+              ) : 'Submit & Activate Account'}
             </button>
           )}
         </div>

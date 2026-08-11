@@ -32,12 +32,13 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Idempotent column additions for existing deployments
+ALTER TABLE users ADD COLUMN IF NOT EXISTS korapay_subaccount_code TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS api_key TEXT;
 ALTER TABLE users ALTER COLUMN api_key_hash DROP NOT NULL;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_status TEXT DEFAULT 'pending_kyc';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_data JSONB;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_provider TEXT DEFAULT 'internal';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_provider TEXT DEFAULT 'korapay';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_provider_reference TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_submitted_at TIMESTAMPTZ;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_approved_at TIMESTAMPTZ;
@@ -50,6 +51,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES users(id),
   reference TEXT UNIQUE NOT NULL,
+  korapay_reference TEXT,
   paystack_reference TEXT,
   amount NUMERIC NOT NULL,
   platform_fee NUMERIC NOT NULL,

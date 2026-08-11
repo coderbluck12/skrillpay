@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
+import { Sun, Moon } from '@phosphor-icons/react';
 
 export default function Navbar() {
   const { isAuthenticated, merchant, logout } = useAuth();
@@ -66,9 +67,9 @@ export default function Navbar() {
             aria-label="Toggle Theme"
           >
             {theme === 'dark' ? (
-              <span className="text-base">☀️</span>
+              <Sun size={18} weight="duotone" className="text-amber-400" />
             ) : (
-              <span className="text-base">🌙</span>
+              <Moon size={18} weight="duotone" className="text-sky-400" />
             )}
           </button>
 

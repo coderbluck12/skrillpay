@@ -3,7 +3,7 @@ import db from '../db';
 import { JwtAuthenticatedRequest } from '../middleware/jwtAuth';
 import { kycProvider } from '../integrations/kycProvider';
 import { AuthUtils } from '../utils/auth';
-import { PaystackService } from '../integrations/paystack';
+import { KorapayService } from '../integrations/korapay';
 import { KycSubmitDTO } from '../types';
 
 export class KycController {
@@ -16,7 +16,7 @@ export class KycController {
       const result = await db.query(
         `SELECT
           id, email, business_name, kyc_status, kyc_data, kyc_submitted_at, kyc_approved_at,
-          kyc_provider, paystack_subaccount_code, bank_account_number, bank_code, account_name,
+          kyc_provider, korapay_subaccount_code, paystack_subaccount_code, bank_account_number, bank_code, account_name,
           fee_type, fee_value, webhook_url, callback_url,
           CASE WHEN api_key_hash IS NOT NULL THEN true ELSE false END as has_api_key
         FROM users WHERE id = $1`,
@@ -37,15 +37,15 @@ export class KycController {
 
   /**
    * POST /v1/kyc/submit
-   * Merchant submits their KYC information from the dashboard.
-   * Runs identity + business verification via the configured KYC provider.
+   * Merchant submits simplified KYC (BVN/NIN + Settlement Bank).
+   * Runs instant automated identity check via Korapay Identity API.
    */
   public static async submitKyc(req: JwtAuthenticatedRequest, res: Response): Promise<void> {
     const userId = req.jwtUser!.userId;
     const body: KycSubmitDTO = req.body;
 
     const {
-      bvn, nin, registration_number, tax_id,
+      bvn, nin,
       first_name, last_name, phone,
       bank_account_number, bank_code,
       fee_type = 'percentage', fee_value = 1.5,
@@ -61,7 +61,6 @@ export class KycController {
     }
 
     try {
-      // Fetch current user
       const userResult = await db.query('SELECT * FROM users WHERE id = $1', [userId]);
       const user = userResult.rows[0];
 
@@ -78,17 +77,16 @@ export class KycController {
         return;
       }
 
-      // Run KYC verification via the configured provider
+      // Run instant Korapay Identity BVN & NIN verification
       const kycInput = {
         userId,
-        bvn, nin, registration_number, tax_id,
+        bvn, nin,
         first_name, last_name, phone,
         business_name: user.business_name,
       };
 
       let providerReference: string | undefined;
 
-      // Verify BVN if provided
       if (bvn) {
         const bvnResult = await kycProvider.verifyBvn(kycInput);
         providerReference = bvnResult.providerReference;
@@ -98,21 +96,18 @@ export class KycController {
         }
       }
 
-      // Verify business if CAC number provided
-      if (registration_number) {
-        const bizResult = await kycProvider.verifyBusiness(kycInput);
-        if (!bizResult.success && !bizResult.requiresManualReview) {
-          res.status(422).json({ status: false, message: `Business verification failed: ${bizResult.error}` });
+      if (nin) {
+        const ninResult = await kycProvider.verifyIdentity(kycInput);
+        if (!ninResult.success && !ninResult.requiresManualReview) {
+          res.status(422).json({ status: false, message: `NIN verification failed: ${ninResult.error}` });
           return;
         }
       }
 
-      // Store KYC data and update status
+      // Store masked KYC data
       const kycData = {
-        bvn: bvn ? `***${bvn.slice(-4)}` : undefined, // Mask sensitive data
+        bvn: bvn ? `***${bvn.slice(-4)}` : undefined,
         nin: nin ? `***${nin.slice(-4)}` : undefined,
-        registration_number,
-        tax_id,
         first_name,
         last_name,
         phone,
@@ -150,7 +145,7 @@ export class KycController {
 
       res.status(200).json({
         status: true,
-        message: 'KYC submitted successfully. Your account is under review. You will be notified once approved.',
+        message: 'KYC verified successfully. Your account is submitted for quick admin activation.',
         data: { kyc_status: 'kyc_submitted', provider: kycProvider.name },
       });
     } catch (error: any) {
@@ -161,7 +156,6 @@ export class KycController {
 
   /**
    * PUT /v1/kyc/webhook-settings
-   * Merchant updates their webhook URL and callback URL (post-activation).
    */
   public static async updateWebhookSettings(req: JwtAuthenticatedRequest, res: Response): Promise<void> {
     const { webhook_url, callback_url } = req.body;
@@ -183,10 +177,6 @@ export class KycController {
 // Admin-only KYC actions
 // ─────────────────────────────────────────────────────────────────────────────
 export class AdminKycController {
-  /**
-   * GET /v1/admin/kyc/pending
-   * Lists all merchants with kyc_status = 'kyc_submitted' awaiting review.
-   */
   public static async listPending(req: JwtAuthenticatedRequest, res: Response): Promise<void> {
     try {
       const result = await db.query(
@@ -203,15 +193,11 @@ export class AdminKycController {
     }
   }
 
-  /**
-   * GET /v1/admin/merchants
-   * Lists all merchants with full details.
-   */
   public static async listAllMerchants(req: JwtAuthenticatedRequest, res: Response): Promise<void> {
     try {
       const result = await db.query(
         `SELECT id, email, business_name, kyc_status, kyc_provider,
-                paystack_subaccount_code, bank_account_number, bank_code, account_name,
+                korapay_subaccount_code, paystack_subaccount_code, bank_account_number, bank_code, account_name,
                 fee_type, fee_value, webhook_url, is_admin, created_at,
                 CASE WHEN api_key_hash IS NOT NULL THEN true ELSE false END as has_api_key
          FROM users ORDER BY created_at DESC`
@@ -225,8 +211,7 @@ export class AdminKycController {
 
   /**
    * POST /v1/admin/kyc/approve/:userId
-   * Approves KYC, creates Paystack subaccount, and generates the merchant's API key.
-   * This is the most important admin action.
+   * Approves KYC, creates Korapay subaccount, and generates secret API key.
    */
   public static async approveKyc(req: JwtAuthenticatedRequest, res: Response): Promise<void> {
     const { userId } = req.params;
@@ -253,46 +238,45 @@ export class AdminKycController {
         return;
       }
 
-      // Create Paystack subaccount (if not already done)
-      let subaccountCode = user.paystack_subaccount_code;
-      let accountName = user.account_name;
+      // Create Korapay subaccount
+      let subaccountCode = user.korapay_subaccount_code || user.paystack_subaccount_code;
+      let accountName = user.account_name || user.business_name;
 
       if (!subaccountCode) {
-        const subaccount = await PaystackService.createSubaccount({
-          business_name: user.business_name,
-          settlement_bank: user.bank_code,
+        const subaccount = await KorapayService.createSubaccount({
+          account_name: user.business_name,
+          email: user.email,
+          bank_code: user.bank_code,
           account_number: user.bank_account_number,
-          percentage_charge: user.fee_type === 'percentage' ? Number(user.fee_value) : 0,
         });
-        subaccountCode = subaccount.subaccount_code;
-        accountName = subaccount.account_name || user.account_name;
+        subaccountCode = subaccount.subaccount_code || subaccount.account_reference || subaccount.id;
+        accountName = subaccount.account_name || user.business_name;
       }
 
-      // Generate fresh API key (raw key shown to merchant once, hash stored)
-      const { rawKey, keyHash } = AuthUtils.generateApiKey(false); // sk_live_xxx
+      // Generate API Key
+      const { rawKey, keyHash } = AuthUtils.generateApiKey(false);
 
-      // Activate the account
       await db.query(
         `UPDATE users SET
           kyc_status = 'active',
           status = 'active',
+          korapay_subaccount_code = $1,
           paystack_subaccount_code = $1,
           account_name = $2,
           api_key_hash = $3,
+          api_key = $4,
           api_key_generated_at = NOW(),
           kyc_approved_at = NOW()
-        WHERE id = $4`,
-        [subaccountCode, accountName, keyHash, userId]
+        WHERE id = $5`,
+        [subaccountCode, accountName, keyHash, rawKey, userId]
       );
 
-      // Return the raw API key to admin (admin communicates it to merchant securely)
       res.status(200).json({
         status: true,
-        message: `Merchant ${user.business_name} has been approved and activated.`,
+        message: `Merchant ${user.business_name} has been approved and activated with Korapay.`,
         data: {
           merchant_id: userId,
-          paystack_subaccount_code: subaccountCode,
-          // IMPORTANT: This is the ONLY time the raw key is available. Share it with the merchant.
+          korapay_subaccount_code: subaccountCode,
           api_key: rawKey,
         },
       });
@@ -302,10 +286,6 @@ export class AdminKycController {
     }
   }
 
-  /**
-   * POST /v1/admin/kyc/reject/:userId
-   * Rejects the KYC submission and resets the merchant to pending_kyc.
-   */
   public static async rejectKyc(req: JwtAuthenticatedRequest, res: Response): Promise<void> {
     const { userId } = req.params;
     const { reason } = req.body;
@@ -315,24 +295,15 @@ export class AdminKycController {
         `UPDATE users SET kyc_status = 'pending_kyc', status = 'pending_kyc' WHERE id = $1`,
         [userId]
       );
-
-      console.log(`KYC rejected for user ${userId}. Reason: ${reason || 'Not specified'}`);
-      // TODO: Send rejection email with reason
-
       res.status(200).json({
         status: true,
         message: 'KYC rejected. Merchant can resubmit after corrections.',
       });
     } catch (error: any) {
-      console.error('KYC rejection error:', error);
       res.status(500).json({ status: false, message: 'Failed to reject KYC' });
     }
   }
 
-  /**
-   * POST /v1/admin/merchants/:userId/suspend
-   * Suspends an active merchant account.
-   */
   public static async suspendMerchant(req: JwtAuthenticatedRequest, res: Response): Promise<void> {
     const { userId } = req.params;
     try {

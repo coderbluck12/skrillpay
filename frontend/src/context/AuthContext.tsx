@@ -10,7 +10,8 @@ interface MerchantProfile {
   kyc_status: 'pending_kyc' | 'kyc_submitted' | 'kyc_approved' | 'active' | 'suspended';
   is_admin: boolean;
   has_api_key?: boolean;
-  paystack_subaccount_code?: string;
+  api_key?: string;
+  subaccount_code?: string;
   bank_account_number?: string;
   webhook_url?: string;
   callback_url?: string;

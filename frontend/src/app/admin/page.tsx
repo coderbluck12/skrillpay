@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { ApiClient } from '@/lib/api';
+import { ShieldCheck, CheckCircle, Warning, LockKey, ArrowClockwise } from '@phosphor-icons/react';
 
 type AdminTab = 'pending' | 'all';
 
@@ -62,7 +63,7 @@ export default function AdminPage() {
   };
 
   const handleApprove = async (userId: string, businessName: string) => {
-    if (!confirm(`Approve KYC for ${businessName}? This will create their Paystack subaccount and generate their API key.`)) return;
+    if (!confirm(`Approve KYC for ${businessName}? This will create their subaccount and generate their API key.`)) return;
     setActionLoading(userId);
     setError(null);
     try {
@@ -130,7 +131,7 @@ export default function AdminPage() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold mb-3">
-            🛡️ Admin Panel
+            <ShieldCheck size={16} weight="duotone" /> Admin Panel
           </div>
           <h1 className="text-2xl font-bold text-white">Merchant Management</h1>
           <p className="text-slate-400 text-sm mt-0.5">Review KYC submissions and manage merchant accounts</p>
@@ -144,13 +145,15 @@ export default function AdminPage() {
       {/* API Key Modal */}
       {approvedKey && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-6" style={{ background: 'rgba(2,8,23,0.85)', backdropFilter: 'blur(8px)' }}>
-          <div className="glass w-full max-w-md rounded-2xl border border-emerald-500/30 p-8">
-            <div className="text-center mb-5">
-              <div className="text-4xl mb-3">✅</div>
+          <div className="glass w-full max-w-md rounded-2xl border border-emerald-500/30 p-8 text-center">
+            <div className="mb-5">
+              <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-3">
+                <CheckCircle size={28} weight="fill" />
+              </div>
               <h3 className="font-bold text-white text-lg">Merchant Approved!</h3>
               <p className="text-slate-400 text-xs mt-1">Share this API key securely with the merchant. It will NOT be shown again.</p>
             </div>
-            <div className="mb-4">
+            <div className="mb-4 text-left">
               <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Generated API Key</label>
               <div className="flex gap-2">
                 <div className="flex-1 px-4 py-3 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs text-sky-300 break-all">
@@ -224,20 +227,22 @@ export default function AdminPage() {
       )}
 
       {error && (
-        <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">⚠️ {error}</div>
+        <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center gap-2">
+          <Warning size={18} weight="bold" /> {error}
+        </div>
       )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {[
-          { label: 'Total Merchants', value: allMerchants.length, color: 'white' },
-          { label: 'Pending Review', value: pendingMerchants.length, color: 'amber' },
-          { label: 'Active', value: allMerchants.filter((m) => m.kyc_status === 'active').length, color: 'emerald' },
-          { label: 'Suspended', value: allMerchants.filter((m) => m.kyc_status === 'suspended').length, color: 'red' },
+          { label: 'Total Merchants', value: allMerchants.length, color: 'text-slate-100' },
+          { label: 'Pending Review', value: pendingMerchants.length, color: 'text-amber-400' },
+          { label: 'Active', value: allMerchants.filter((m) => m.kyc_status === 'active').length, color: 'text-emerald-400' },
+          { label: 'Suspended', value: allMerchants.filter((m) => m.kyc_status === 'suspended').length, color: 'text-red-400' },
         ].map((s) => (
           <div key={s.label} className="glass rounded-2xl border border-slate-800/60 p-5">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">{s.label}</p>
-            <p className={`text-3xl font-black ${s.color === 'amber' ? 'text-amber-400' : s.color === 'emerald' ? 'text-emerald-400' : s.color === 'red' ? 'text-red-400' : 'text-white'}`}>
+            <p className={`text-3xl font-black ${s.color}`}>
               {s.value}
             </p>
           </div>

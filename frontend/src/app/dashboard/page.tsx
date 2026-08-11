@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { ApiClient } from '@/lib/api';
 import KycWizard from '@/components/KycWizard';
+import { Link as LinkIcon, Key, ArrowClockwise, Sparkle } from '@phosphor-icons/react';
 
 export default function DashboardPage() {
   const { isAuthenticated, isLoading, merchant, refreshProfile } = useAuth();
@@ -18,6 +19,48 @@ export default function DashboardPage() {
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const [copiedKey, setCopiedKey] = useState(false);
 
+  // Payment Link modal state
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [linkAmount, setLinkAmount] = useState(5000);
+  const [linkCustomerEmail, setLinkCustomerEmail] = useState('');
+  const [generatedLink, setGeneratedLink] = useState<{ checkoutUrl: string; receiptUrl: string; reference: string } | null>(null);
+  const [linkLoading, setLinkLoading] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  const handleCreatePaymentLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!apiKey) {
+      alert('Please enter your API key first to generate payment links');
+      setShowApiKeyInput(true);
+      return;
+    }
+
+    setLinkLoading(true);
+    setError(null);
+    try {
+      const ref = `LINK_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+      const result = await ApiClient.initializeCharge(apiKey, {
+        amount: Number(linkAmount),
+        email: linkCustomerEmail || 'customer@skrillpay.com',
+        reference: ref,
+      });
+
+      if (result.status && result.data) {
+        setGeneratedLink({
+          checkoutUrl: result.data.checkout_url || result.data.authorization_url,
+          receiptUrl: result.data.receipt_url,
+          reference: ref,
+        });
+      } else {
+        throw new Error(result.message || 'Failed to generate payment link');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Error generating link');
+    } finally {
+      setLinkLoading(false);
+    }
+  };
+
   // Route guard
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -27,10 +70,14 @@ export default function DashboardPage() {
 
   // Load dashboard data when merchant is active
   useEffect(() => {
-    if (merchant?.kyc_status === 'active' && apiKey) {
-      loadDashboardData(apiKey);
+    if (merchant?.kyc_status === 'active') {
+      const activeKey = merchant.api_key || apiKey || localStorage.getItem('merchant_api_key') || '';
+      if (activeKey) {
+        if (!apiKey) setApiKey(activeKey);
+        loadDashboardData(activeKey);
+      }
     }
-  }, [merchant?.kyc_status, apiKey]);
+  }, [merchant?.kyc_status, merchant?.api_key, apiKey]);
 
   const loadDashboardData = async (key: string) => {
     setDataLoading(true);
@@ -105,8 +152,8 @@ export default function DashboardPage() {
           <div className="glass rounded-2xl border border-slate-800/60 p-6 text-left space-y-3">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">What happens next?</p>
             {[
-              { step: '1', text: 'Our team verifies your bank account and identity details' },
-              { step: '2', text: 'A Paystack subaccount is created in your name' },
+              { step: '1', text: 'Our system verifies your BVN / NIN via Korapay Identity API' },
+              { step: '2', text: 'A Korapay subaccount is generated for automated split settlements' },
               { step: '3', text: 'Your unique API key is generated and shared with you' },
               { step: '4', text: 'You\'re ready to accept payments via the Skrillpay API' },
             ].map((item) => (
@@ -139,6 +186,12 @@ export default function DashboardPage() {
           <p className="text-slate-400 text-sm mt-0.5">Welcome back, {merchant.business_name}</p>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowLinkModal(true)}
+            className="px-4 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 text-sm font-bold transition-all shadow-lg shadow-sky-500/20 flex items-center gap-2"
+          >
+            <LinkIcon size={18} weight="bold" /> Create Payment Link
+          </button>
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 font-medium">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             Active
@@ -159,6 +212,122 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* API Key Banner Card */}
+      {merchant.api_key && (
+        <div className="glass rounded-2xl border border-sky-500/30 p-5 mb-8 bg-sky-500/5">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 text-sky-400 font-bold text-sm mb-1">
+                <Key size={18} weight="duotone" /> Your Secret API Key
+              </div>
+              <p className="text-xs text-slate-400">
+                Use this API key to authenticate all request calls to <code>/v1/charge</code> and <code>/v1/transactions/verify</code>.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 w-full md:w-auto">
+              <input
+                type="text" readOnly value={merchant.api_key}
+                className="flex-1 md:w-80 px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs text-sky-300 select-all"
+              />
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(merchant.api_key || '');
+                  setCopiedKey(true);
+                  setTimeout(() => setCopiedKey(false), 2000);
+                }}
+                className="px-4 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs transition-all shrink-0"
+              >
+                {copiedKey ? '✓ Copied' : 'Copy Key'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Payment Link Modal */}
+      {showLinkModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-6" style={{ background: 'rgba(2,8,23,0.85)', backdropFilter: 'blur(8px)' }}>
+          <div className="glass w-full max-w-md rounded-2xl border border-slate-700 p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-white text-lg">🔗 Create Quick Payment Link</h3>
+              <button onClick={() => { setShowLinkModal(false); setGeneratedLink(null); }} className="text-slate-500 hover:text-white text-xl">×</button>
+            </div>
+
+            {!generatedLink ? (
+              <form onSubmit={handleCreatePaymentLink} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Amount (in Kobo or subunits)</label>
+                  <input
+                    type="number" required value={linkAmount}
+                    onChange={(e) => setLinkAmount(Number(e.target.value))}
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-sm"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">= ₦{(linkAmount / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Customer Email (optional)</label>
+                  <input
+                    type="email" value={linkCustomerEmail}
+                    onChange={(e) => setLinkCustomerEmail(e.target.value)}
+                    placeholder="customer@example.com"
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-sm"
+                  />
+                </div>
+                <button
+                  type="submit" disabled={linkLoading}
+                  className="w-full py-3 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-sm transition-all disabled:opacity-50"
+                >
+                  {linkLoading ? 'Generating Link...' : 'Generate Shareable Link'}
+                </button>
+              </form>
+            ) : (
+              <div className="space-y-4">
+                <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-center">
+                  <span className="text-3xl block mb-2">🎉</span>
+                  <p className="font-bold text-emerald-400 text-sm">Payment Link Ready!</p>
+                  <p className="text-xs text-slate-400 mt-1">Share this link directly with your customer to collect payment.</p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Checkout URL</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text" readOnly value={generatedLink.checkoutUrl}
+                      className="flex-1 px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs text-sky-400 truncate"
+                    />
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(generatedLink.checkoutUrl);
+                        setLinkCopied(true);
+                        setTimeout(() => setLinkCopied(false), 2000);
+                      }}
+                      className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-300"
+                    >
+                      {linkCopied ? 'Copied!' : 'Copy'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <a
+                    href={generatedLink.checkoutUrl} target="_blank" rel="noopener noreferrer"
+                    className="flex-1 text-center py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs transition-all"
+                  >
+                    Open Link ↗
+                  </a>
+                  <button
+                    onClick={() => setGeneratedLink(null)}
+                    className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-xs transition-all"
+                  >
+                    Create Another
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* API Key Input */}
       {showApiKeyInput && (
