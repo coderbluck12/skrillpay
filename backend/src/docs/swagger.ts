@@ -7,6 +7,10 @@ export const swaggerSpec = {
   },
   servers: [
     {
+      url: process.env.API_BASE_URL ? `${process.env.API_BASE_URL.replace(/\/$/, '')}/v1` : 'http://localhost:3000/v1',
+      description: 'Primary API Server',
+    },
+    {
       url: 'http://localhost:3000/v1',
       description: 'Local Development Server',
     },

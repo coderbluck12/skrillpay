@@ -294,7 +294,7 @@ export default function DocsPage() {
 
         <div className="mt-8 p-4 rounded-xl bg-indigo-500/5 border border-indigo-500/20">
           <p className="text-xs font-semibold text-indigo-400 mb-1">Base URL</p>
-          <code className="text-xs text-slate-300 font-mono break-all">http://localhost:3000/v1</code>
+          <code className="text-xs text-slate-300 font-mono break-all">{BASE_URL}</code>
         </div>
       </aside>
 
