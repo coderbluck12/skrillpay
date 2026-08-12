@@ -10,7 +10,7 @@ export default function Home() {
       <section className="max-w-7xl mx-auto px-6 pt-24 pb-20 text-center relative z-10">
 
 
-        {/* Headliner */}
+        {/* Headlining */}
         <h1 className="text-5xl md:text-7xl font-black tracking-tight leading-[1.05] mb-6 max-w-5xl mx-auto">
           Accept payments &{' '}
           <br className="hidden md:block" />
