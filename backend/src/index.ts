@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import swaggerUi from 'swagger-ui-express';
@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 
-app.use((req: Request, res: Response, next) => {
+app.use((req: Request, res: Response, next: NextFunction) => {
   if (req.originalUrl === '/v1/webhooks/paystack') {
     next();
   } else {

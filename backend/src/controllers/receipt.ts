@@ -20,6 +20,7 @@ function buildReceiptHtml(data: {
   currency: string;
   business_name: string;
   created_at: string;
+  paystack_reference?: string;
 }): string {
   const isPaid = data.status === 'success';
   const statusColor = isPaid ? '#22c55e' : data.status === 'pending' ? '#f59e0b' : '#ef4444';

@@ -14,7 +14,7 @@ export const authRateLimiter = rateLimit({
     status: false,
     message: 'Too many authentication attempts. Please try again after 15 minutes.',
   },
-  skip: (req) => {
+  skip: (req: any) => {
     // Skip rate limiting if header explicitly sets bypass in test environments
     return process.env.NODE_ENV === 'test' && req.headers['x-skip-rate-limit'] === 'true';
   },
@@ -34,7 +34,7 @@ export const apiRateLimiter = rateLimit({
     status: false,
     message: 'Too many API requests. Please slow down and try again later.',
   },
-  skip: (req) => {
+  skip: (req: any) => {
     return process.env.NODE_ENV === 'test' && req.headers['x-skip-rate-limit'] === 'true';
   },
 });
