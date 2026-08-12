@@ -26,6 +26,9 @@ CREATE TABLE IF NOT EXISTS users (
   webhook_url TEXT,
   callback_url TEXT,
   is_admin BOOLEAN DEFAULT false,
+  is_email_verified BOOLEAN DEFAULT false,
+  email_verification_token TEXT,
+  email_verification_expires TIMESTAMPTZ,
   api_key_generated_at TIMESTAMPTZ,
   -- Legacy status kept for backwards compat with api key middleware
   status TEXT CHECK (status IN ('pending_kyc', 'active', 'suspended')) DEFAULT 'pending_kyc',
@@ -45,7 +48,11 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_approved_at TIMESTAMPTZ;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS webhook_url TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS callback_url TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT false;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_email_verified BOOLEAN DEFAULT false;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_token TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_expires TIMESTAMPTZ;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS api_key_generated_at TIMESTAMPTZ;
+
 
 CREATE TABLE IF NOT EXISTS transactions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

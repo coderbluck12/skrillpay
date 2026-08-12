@@ -8,14 +8,21 @@ import { KycController, AdminKycController } from '../controllers/kyc';
 import { ReceiptController } from '../controllers/receipt';
 import { authenticateApiKey } from '../middleware/auth';
 import { authenticateJwt, requireAdmin } from '../middleware/jwtAuth';
+import { authRateLimiter, apiRateLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 
+// Apply general API rate limiting to all /v1 routes
+router.use(apiRateLimiter);
+
 // ─────────────────────────────────────────────────────────────────────────────
-// Auth Routes (public)
+// Auth Routes (public, protected by authRateLimiter)
 // ─────────────────────────────────────────────────────────────────────────────
-router.post('/auth/register', json(), AuthController.register);
-router.post('/auth/login', json(), AuthController.login);
+router.post('/auth/register', authRateLimiter, json(), AuthController.register);
+router.post('/auth/login', authRateLimiter, json(), AuthController.login);
+router.get('/auth/verify-email', AuthController.verifyEmail as any);
+router.post('/auth/verify-email', json(), AuthController.verifyEmail as any);
+router.post('/auth/resend-verification', authRateLimiter, json(), AuthController.resendVerification as any);
 router.get('/auth/me', authenticateJwt as any, AuthController.me as any);
 
 // ─────────────────────────────────────────────────────────────────────────────
