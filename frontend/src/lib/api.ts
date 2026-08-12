@@ -29,6 +29,16 @@ export class ApiClient {
     return res.json();
   }
 
+  /** Legacy POST /v1/merchants/onboard */
+  static async onboardMerchant(data: any) {
+    const res = await fetch(`${API_BASE_URL}/merchants/onboard`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  }
+
   /** POST /v1/auth/login */
   static async login(data: { email: string; password: string }) {
     const res = await fetch(`${API_BASE_URL}/auth/login`, {

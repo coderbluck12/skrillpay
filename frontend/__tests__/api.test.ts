@@ -1,3 +1,4 @@
+/// <reference types="@types/jest" />
 import { ApiClient } from '../src/lib/api';
 
 describe('ApiClient Frontend Unit Tests', () => {
