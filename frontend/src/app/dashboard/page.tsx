@@ -30,6 +30,19 @@ export default function DashboardPage() {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
 
+  const formatCheckoutUrl = (rawUrl: string) => {
+    if (!rawUrl) return '';
+    if (typeof window !== 'undefined' && (rawUrl.includes('localhost:3000') || rawUrl.includes('localhost:3001'))) {
+      try {
+        const parsed = new URL(rawUrl);
+        return `${window.location.origin}${parsed.pathname}${parsed.search}`;
+      } catch {
+        return rawUrl;
+      }
+    }
+    return rawUrl;
+  };
+
   const handleCreatePaymentLink = async (e: React.FormEvent) => {
     e.preventDefault();
     const activeKey = apiKey || merchant?.api_key || localStorage.getItem('merchant_api_key') || '';
@@ -52,8 +65,9 @@ export default function DashboardPage() {
       });
 
       if (result.status && result.data) {
+        const rawCheckout = result.data.checkout_url || result.data.authorization_url;
         setGeneratedLink({
-          checkoutUrl: result.data.checkout_url || result.data.authorization_url,
+          checkoutUrl: formatCheckoutUrl(rawCheckout),
           receiptUrl: result.data.receipt_url,
           reference: ref,
         });
@@ -159,8 +173,8 @@ export default function DashboardPage() {
           <div className="glass rounded-2xl border border-slate-800/60 p-6 text-left space-y-3">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">What happens next?</p>
             {[
-              { step: '1', text: 'Our system verifies your BVN / NIN via Korapay Identity API' },
-              { step: '2', text: 'A Korapay subaccount is generated for automated split settlements' },
+              { step: '1', text: 'Our system verifies your BVN / NIN via automated Identity Verification' },
+              { step: '2', text: 'A merchant subaccount is generated for automated split settlements' },
               { step: '3', text: 'Your unique API key is generated and shared with you' },
               { step: '4', text: 'You\'re ready to accept payments via the Skrillpay API' },
             ].map((item) => (

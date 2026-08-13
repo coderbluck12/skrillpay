@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import axios, { AxiosInstance } from 'axios';
 import dotenv from 'dotenv';
+import { getFrontendBaseUrl } from '../utils/url';
 
 dotenv.config();
 
@@ -80,7 +81,7 @@ export class KorapayService {
       // In development or when using test keys, provide a fallback payment link if Korapay API returns field validation error
       if (process.env.NODE_ENV !== 'production' || errorMsg.includes('invalid') || errorMsg.includes('Invalid')) {
         console.warn(`[Korapay dev fallback] Generating branded checkout URL for reference: ${reference}`);
-        const frontendBaseUrl = process.env.FRONTEND_BASE_URL || 'http://localhost:3001';
+        const frontendBaseUrl = getFrontendBaseUrl();
         return {
           checkout_url: `${frontendBaseUrl}/pay/${reference}`,
           authorization_url: `${frontendBaseUrl}/pay/${reference}`,

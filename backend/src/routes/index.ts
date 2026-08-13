@@ -63,6 +63,7 @@ router.get('/receipt/:reference/download', ReceiptController.downloadReceipt as 
 // ─────────────────────────────────────────────────────────────────────────────
 // Korapay & Paystack Webhooks (public — gateways send events here)
 // ─────────────────────────────────────────────────────────────────────────────
+router.post('/webhooks/payment', raw({ type: 'application/json' }), WebhookController.handleWebhook);
 router.post('/webhooks/korapay', raw({ type: 'application/json' }), WebhookController.handleWebhook);
 router.post('/webhooks/paystack', raw({ type: 'application/json' }), WebhookController.handleWebhook);
 

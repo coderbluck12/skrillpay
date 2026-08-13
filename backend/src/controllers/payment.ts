@@ -3,8 +3,7 @@ import db from '../db';
 import { KorapayService } from '../integrations/korapay';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { ChargeDTO } from '../types';
-
-const platformBaseUrl = process.env.API_BASE_URL || 'http://localhost:3000';
+import { getPlatformBaseUrl, getFrontendBaseUrl } from '../utils/url';
 
 export class PaymentController {
   public static async initializeCharge(req: AuthenticatedRequest, res: Response): Promise<void> {
@@ -13,6 +12,9 @@ export class PaymentController {
       res.status(401).json({ status: false, message: 'Merchant context not found' });
       return;
     }
+
+    const platformBaseUrl = getPlatformBaseUrl(req);
+    const frontendBaseUrl = getFrontendBaseUrl(req);
 
     const { amount, email, reference, callback_url }: ChargeDTO = req.body;
 
@@ -23,7 +25,7 @@ export class PaymentController {
 
     const subaccountCode = (merchant as any).korapay_subaccount_code || merchant.paystack_subaccount_code;
 
-    // Amount conversion: if sent in Kobo (e.g. 500000), convert to Naira (5000) for Korapay
+    // Amount conversion: if sent in Kobo (e.g. 500000), convert to Naira (5000) for processing
     const amountInNaira = amount > 10000 && Number.isInteger(amount) ? amount / 100 : amount;
     const amountInKobo = Math.round(amountInNaira * 100);
 
@@ -69,7 +71,6 @@ export class PaymentController {
         [merchant.id, reference, amountInKobo, platformFeeInKobo, merchantAmountInKobo, email, koraData.checkout_url || reference]
       );
 
-      const frontendBaseUrl = process.env.FRONTEND_BASE_URL || 'http://localhost:3001';
       const brandedCheckoutUrl = `${frontendBaseUrl}/pay/${reference}`;
 
       res.status(200).json({
@@ -91,6 +92,7 @@ export class PaymentController {
 
   public static async verifyTransaction(req: AuthenticatedRequest, res: Response): Promise<void> {
     const { reference } = req.params;
+    const platformBaseUrl = getPlatformBaseUrl(req);
 
     if (!reference) {
       res.status(400).json({ status: false, message: 'Reference parameter is required' });
@@ -122,7 +124,7 @@ export class PaymentController {
         status: true,
         message: 'Transaction verification completed',
         data: {
-          korapay_data: koraData,
+          processor_data: koraData,
           transaction: transaction || null,
           receipt_url: transaction ? `${platformBaseUrl}/v1/receipt/${reference}` : null,
         },

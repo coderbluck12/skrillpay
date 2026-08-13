@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import db from '../db';
 import { AuthenticatedRequest } from '../middleware/auth';
+import { getPlatformBaseUrl } from '../utils/url';
 
 function formatNaira(kobo: number): string {
   return (kobo / 100).toLocaleString('en-NG', {
@@ -291,7 +292,7 @@ export class ReceiptController {
             business_name: tx.business_name,
             paystack_reference: tx.paystack_reference,
             created_at: tx.created_at,
-            receipt_url: `${process.env.API_BASE_URL || 'http://localhost:3000'}/v1/receipt/${tx.reference}`,
+            receipt_url: `${getPlatformBaseUrl(req)}/v1/receipt/${tx.reference}`,
           },
         });
         return;

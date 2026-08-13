@@ -426,10 +426,10 @@ Content-Type: application/json
   "status": true,
   "message": "Transaction initialized successfully",
   "data": {
-    "checkout_url": "http://localhost:3001/pay/ORDER_20260101_001",
+    "checkout_url": "https://api.skrillpay.com/pay/ORDER_20260101_001",
     "access_code": "ORDER_20260101_001",
     "reference": "ORDER_20260101_001",
-    "receipt_url": "http://localhost:3000/v1/receipt/ORDER_20260101_001"
+    "receipt_url": "https://api.skrillpay.com/v1/receipt/ORDER_20260101_001"
   }
 }`}
               notes={[
@@ -446,7 +446,7 @@ Content-Type: application/json
 async function createPayment(orderId, customerEmail, amountNaira) {
   const amountKobo = amountNaira * 100; // Convert to kobo
 
-  const response = await axios.post('http://localhost:3000/v1/charge', {
+  const response = await axios.post('https://api.skrillpay.com/v1/charge', {
     amount: amountKobo,
     email: customerEmail,
     reference: \`ORDER_\${orderId}_\${Date.now()}\`,
@@ -513,7 +513,7 @@ Authorization: Bearer sk_key_sample_key_string_placeholder`}
       "ip_address": "...",
       "authorization": { "card_type": "visa", "last4": "4081", "bank": "Zenith Bank" }
     },
-    "receipt_url": "http://localhost:3000/v1/receipt/ORDER_20260101_001"
+    "receipt_url": "https://api.skrillpay.com/v1/receipt/ORDER_20260101_001"
   }
 }`}
               notes={['Always call this endpoint from your backend, not the frontend.', 'status can be: success, pending, or failed.']}
@@ -573,7 +573,7 @@ GET /v1/receipt/ORDER_20260101_001?format=json`}
     "business_name": "TechMart Ltd",
     "transaction_reference": "TX_802948...",
     "created_at": "2026-01-01T10:30:00Z",
-    "receipt_url": "http://localhost:3000/v1/receipt/ORDER_20260101_001"
+    "receipt_url": "https://api.skrillpay.com/v1/receipt/ORDER_20260101_001"
   }
 }`}
               notes={[

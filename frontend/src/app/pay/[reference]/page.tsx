@@ -61,7 +61,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ reference: 
             name: customerName,
             email: customerEmail,
           },
-          notification_url: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/v1'}/webhooks/korapay`,
+          notification_url: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/v1'}/webhooks/payment`,
           onClose: function () {
             console.log('Payment modal closed');
           },
@@ -76,7 +76,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ reference: 
             }
           },
           onFailed: async function (data: any) {
-            console.warn('Korapay modal payment attempt status:', data);
+            console.warn('Payment attempt status:', data);
             if (process.env.NODE_ENV !== 'production') {
               setPaymentStatus('success');
               try {
@@ -90,7 +90,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ reference: 
           },
         });
       } catch (err) {
-        console.error('Korapay modal initialization exception:', err);
+        console.error('Payment modal initialization exception:', err);
         setPaymentStatus('success');
       }
     } else {
@@ -100,7 +100,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ reference: 
 
   return (
     <>
-      {/* Korapay Inline JS Library Script */}
+      {/* Payment Inline JS Library Script */}
       <Script
         src="https://korablobstorage.blob.core.windows.net/modal-bucket/korapay-collections.min.js"
         onLoad={() => setScriptLoaded(true)}
