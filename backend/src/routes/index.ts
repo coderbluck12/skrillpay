@@ -37,9 +37,10 @@ router.put('/kyc/webhook-settings', authenticateJwt as any, json(), KycControlle
 // ─────────────────────────────────────────────────────────────────────────────
 router.get('/admin/merchants', authenticateJwt as any, requireAdmin as any, AdminKycController.listAllMerchants as any);
 router.get('/admin/kyc/pending', authenticateJwt as any, requireAdmin as any, AdminKycController.listPending as any);
-router.post('/admin/kyc/approve/:userId', authenticateJwt as any, requireAdmin as any, AdminKycController.approveKyc as any);
+router.post('/admin/kyc/approve/:userId', authenticateJwt as any, requireAdmin as any, json(), AdminKycController.approveKyc as any);
 router.post('/admin/kyc/reject/:userId', authenticateJwt as any, requireAdmin as any, json(), AdminKycController.rejectKyc as any);
 router.post('/admin/merchants/:userId/suspend', authenticateJwt as any, requireAdmin as any, AdminKycController.suspendMerchant as any);
+router.post('/admin/merchants/:userId/fee', authenticateJwt as any, requireAdmin as any, json(), AdminKycController.updateMerchantFee as any);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Merchant API Routes (API key protected — used in merchant integrations)

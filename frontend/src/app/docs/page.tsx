@@ -308,7 +308,7 @@ export default function DocsPage() {
               </div>
               <h1 className="text-3xl font-extrabold text-white mb-3">Skrillpay API Reference</h1>
               <p className="text-slate-400 leading-relaxed">
-                Skrillpay is a <strong className="text-white">reseller payment gateway</strong> — you integrate once against the Skrillpay API and your customers accept payments through automated subaccounts. Every payment is automatically split between the platform and the merchant, with instant settlement.
+                Skrillpay is a <strong className="text-white">reseller payment gateway</strong>. Integrate once against the Skrillpay API and your customers accept payments through automated subaccounts. Every payment is automatically split between the platform and the merchant, with instant settlement.
               </p>
             </div>
 
@@ -317,7 +317,7 @@ export default function DocsPage() {
               {[
                 { step: '1', title: 'Register & Verify Identity', desc: 'Sign up on the Skrillpay web portal and submit your settlement bank details along with BVN/NIN for automated identity verification.' },
                 { step: '2', title: 'Get Your API Key', desc: 'Upon activation, your settlement account and secret API Key (sk_key_...) will be issued.' },
-                { step: '3', title: 'Accept Payments', desc: 'Call POST /v1/charge with your API Key — redirect customers to checkout_url.' },
+                { step: '3', title: 'Accept Payments', desc: 'Call POST /v1/charge with your API Key and redirect customers to checkout_url.' },
                 { step: '4', title: 'Verify & Generate Receipts', desc: 'Call GET /v1/transactions/verify/:ref or access /v1/receipt/:ref to issue digital receipts to customers.' },
               ].map((s) => (
                 <div key={s.step} className="flex gap-4">
@@ -405,7 +405,7 @@ export default function DocsPage() {
             <EndpointCard
               method="POST" path="/v1/charge"
               description="Initialize a Skrillpay payment transaction. Returns a checkout_url to redirect your customer to your branded payment page. Also returns a receipt_url you can share with the customer after payment."
-              auth="API Key required — Authorization: Bearer sk_key_xxxx"
+              auth="API Key required (Authorization: Bearer sk_key_xxxx)"
               params={[
                 { name: 'amount', type: 'number', required: true, desc: 'Amount in kobo (NGN). e.g. 500000 = ₦5,000. Must be a positive integer.' },
                 { name: 'email', type: 'string', required: true, desc: "Customer's email address. Used to identify the payer." },
@@ -435,7 +435,7 @@ Content-Type: application/json
               notes={[
                 'Redirect your customer to authorization_url to complete payment.',
                 'receipt_url can be emailed to the customer after payment confirmation.',
-                'Reference must be globally unique — use order IDs or UUIDs.',
+                'Reference must be globally unique using order IDs or UUIDs.',
               ]}
             />
 
@@ -478,7 +478,7 @@ async function createPayment(orderId, customerEmail, amountNaira) {
                 <CheckCircle size={16} weight="duotone" /> Verify a Transaction
               </div>
               <h1 className="text-2xl font-bold text-white mb-2">Verify a Transaction</h1>
-              <p className="text-slate-400 text-sm">Confirm a payment's status directly against Skrillpay Engine. Always verify server-side — never trust client-side confirmation alone.</p>
+              <p className="text-slate-400 text-sm">Confirm a payment's status directly against Skrillpay Engine. Always verify server-side and never trust client-side confirmation alone.</p>
             </div>
 
             <EndpointCard
@@ -540,7 +540,7 @@ Authorization: Bearer sk_key_sample_key_string_placeholder`}
                 <li>Beautiful HTML layout with your branding</li>
                 <li>Full fee breakdown (total charged, platform fee, merchant receives)</li>
                 <li>Print / Save as PDF button built-in</li>
-                <li>Public URL — share directly in emails or SMS</li>
+                <li>Public URL to share directly in emails or SMS</li>
                 <li>JSON format for programmatic processing</li>
                 <li>No authentication required to view</li>
               </ul>
@@ -709,7 +709,7 @@ app.post('/webhooks/skrillpay', (req, res) => {
   if (event === 'charge.success') {
     // Mark order as paid, send confirmation email, etc.
     const { reference, amount, customer } = data;
-    console.log(\`Payment received: \${reference} — ₦\${amount / 100}\`);
+    console.log(\`Payment received: \${reference} : ₦\${amount / 100}\`);
     
     // Generate and send receipt
     const receiptUrl = \`https://api.skrillpay.com/v1/receipt/\${reference}\`;
@@ -766,7 +766,7 @@ app.post('/webhooks/skrillpay', (req, res) => {
                     { code: '404', meaning: 'Not Found', cause: 'Transaction reference, user, or receipt does not exist.' },
                     { code: '409', meaning: 'Conflict', cause: 'Duplicate transaction reference, or email already registered.' },
                     { code: '422', meaning: 'Unprocessable', cause: 'BVN verification failed via KYC provider.' },
-                    { code: '500', meaning: 'Server Error', cause: 'Internal error — check backend logs. Contact support if persistent.' },
+                    { code: '500', meaning: 'Server Error', cause: 'Internal error. Check backend logs or contact support if persistent.' },
                   ].map((e) => (
                     <tr key={e.code} className="border-b border-slate-800/50">
                       <td className="px-5 py-3 font-mono text-red-400 font-bold">{e.code}</td>

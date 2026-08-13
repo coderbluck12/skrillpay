@@ -114,10 +114,21 @@ export class ApiClient {
   }
 
   /** POST /v1/admin/kyc/approve/:userId */
-  static async adminApproveKyc(userId: string) {
+  static async adminApproveKyc(userId: string, feeConfig?: { fee_type?: 'percentage' | 'flat'; fee_value?: number }) {
     const res = await fetch(`${API_BASE_URL}/admin/kyc/approve/${userId}`, {
       method: 'POST',
       headers: authHeaders(),
+      body: JSON.stringify(feeConfig || {}),
+    });
+    return res.json();
+  }
+
+  /** POST /v1/admin/merchants/:userId/fee */
+  static async adminUpdateMerchantFee(userId: string, feeConfig: { fee_type: 'percentage' | 'flat'; fee_value: number }) {
+    const res = await fetch(`${API_BASE_URL}/admin/merchants/${userId}/fee`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(feeConfig),
     });
     return res.json();
   }

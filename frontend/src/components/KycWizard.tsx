@@ -39,8 +39,6 @@ export default function KycWizard({ onComplete }: KycWizardProps) {
   // Bank details
   const [bankAccountNumber, setBankAccountNumber] = useState('');
   const [bankCode, setBankCode] = useState('057');
-  const [feeType, setFeeType] = useState<'percentage' | 'flat'>('percentage');
-  const [feeValue, setFeeValue] = useState(1.5);
 
   // Identity (BVN / NIN only - simplified)
   const [firstName, setFirstName] = useState('');
@@ -82,8 +80,6 @@ export default function KycWizard({ onComplete }: KycWizardProps) {
       const result = await ApiClient.submitKyc({
         bank_account_number: bankAccountNumber,
         bank_code: bankCode,
-        fee_type: feeType,
-        fee_value: feeValue,
         first_name: firstName || undefined,
         last_name: lastName || undefined,
         phone: phone || undefined,
@@ -169,24 +165,6 @@ export default function KycWizard({ onComplete }: KycWizardProps) {
                 ))}
               </select>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Platform Fee Model</label>
-                <select value={feeType} onChange={(e: any) => setFeeType(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-sm">
-                  <option value="percentage">Percentage (%)</option>
-                  <option value="flat">Flat Rate (NGN)</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                  Fee Value ({feeType === 'percentage' ? '%' : '₦'})
-                </label>
-                <input type="number" step="0.1" min="0" value={feeValue}
-                  onChange={(e) => setFeeValue(parseFloat(e.target.value))}
-                  className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-sm" />
-              </div>
-            </div>
           </div>
         )}
 
@@ -240,12 +218,11 @@ export default function KycWizard({ onComplete }: KycWizardProps) {
 
             <div className="space-y-3 text-sm">
               {[
-                { label: 'Bank Account Number', value: bankAccountNumber ? `****${bankAccountNumber.slice(-4)}` : '—' },
+                { label: 'Bank Account Number', value: bankAccountNumber ? `****${bankAccountNumber.slice(-4)}` : 'N/A' },
                 { label: 'Settlement Bank', value: BANKS.find((b) => b.code === bankCode)?.name || bankCode },
-                { label: 'Fee Rate', value: `${feeValue}${feeType === 'percentage' ? '%' : '₦'} (${feeType})` },
-                { label: 'Director Name', value: `${firstName} ${lastName}`.trim() || '—' },
-                { label: 'BVN Status', value: bvn ? `****${bvn.slice(-4)} (Verified)` : '—' },
-                { label: 'NIN Status', value: nin ? `****${nin.slice(-4)}` : '—' },
+                { label: 'Director Name', value: `${firstName} ${lastName}`.trim() || 'N/A' },
+                { label: 'BVN Status', value: bvn ? `****${bvn.slice(-4)} (Verified)` : 'N/A' },
+                { label: 'NIN Status', value: nin ? `****${nin.slice(-4)}` : 'N/A' },
               ].map((row) => (
                 <div key={row.label} className="flex justify-between py-2.5 border-b border-slate-800/60">
                   <span className="text-slate-400">{row.label}</span>

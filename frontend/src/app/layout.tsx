@@ -4,7 +4,7 @@ import { ThemeProvider } from '@/context/ThemeContext';
 import Navbar from '@/components/Navbar';
 
 export const metadata = {
-  title: 'Skrillpay — Merchant Payment Platform',
+  title: 'Skrillpay | Merchant Payment Platform',
   description: 'Accept payments, split fees, and settle merchants automatically with Skrillpay Engine.',
 };
 

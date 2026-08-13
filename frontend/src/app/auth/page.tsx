@@ -75,7 +75,7 @@ export default function AuthPage() {
           <p className="text-slate-400 text-sm mt-1">
             {activeTab === 'login'
               ? 'Enter your credentials to access your dashboard'
-              : 'Register your business — KYC can be completed after login'}
+              : 'Register your business. KYC can be completed after login.'}
           </p>
         </div>
 

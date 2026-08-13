@@ -79,7 +79,7 @@ export default function Home() {
           {
             IconComponent: Scissors,
             title: 'Automatic Fee Splits',
-            desc: 'Define percentage or flat fees per merchant. Skrillpay splits the funds on every transaction — nothing to reconcile.',
+            desc: 'Define percentage or flat fees per merchant. Skrillpay splits the funds on every transaction so there is nothing to reconcile.',
             color: 'indigo',
           },
           {
@@ -91,7 +91,7 @@ export default function Home() {
           {
             IconComponent: Key,
             title: 'API Key Auth',
-            desc: 'Each merchant gets a hashed API key. We never store the plaintext — SHA-256 hashed at rest from day one.',
+            desc: 'Each merchant gets a hashed API key. We never store plaintext keys, which are SHA-256 hashed at rest from day one.',
             color: 'sky',
           },
           {

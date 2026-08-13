@@ -114,6 +114,9 @@ export class KycController {
         submitted_at: new Date().toISOString(),
       };
 
+      const defaultFeeType = user.fee_type || 'percentage';
+      const defaultFeeValue = user.fee_value !== null && user.fee_value !== undefined ? user.fee_value : 1.5;
+
       await db.query(
         `UPDATE users SET
           kyc_status = 'kyc_submitted',
@@ -135,8 +138,8 @@ export class KycController {
           providerReference || null,
           bank_account_number,
           bank_code,
-          fee_type,
-          fee_value,
+          defaultFeeType,
+          defaultFeeValue,
           webhook_url || null,
           callback_url || null,
           userId,
@@ -181,7 +184,7 @@ export class AdminKycController {
     try {
       const result = await db.query(
         `SELECT id, email, business_name, kyc_status, kyc_data, kyc_provider,
-                bank_account_number, bank_code, kyc_submitted_at, created_at
+                bank_account_number, bank_code, fee_type, fee_value, kyc_submitted_at, created_at
          FROM users
          WHERE kyc_status = 'kyc_submitted'
          ORDER BY kyc_submitted_at ASC`
@@ -211,10 +214,11 @@ export class AdminKycController {
 
   /**
    * POST /v1/admin/kyc/approve/:userId
-   * Approves KYC, creates Korapay subaccount, and generates secret API key.
+   * Approves KYC, creates merchant subaccount, configures platform fee, and generates secret API key.
    */
   public static async approveKyc(req: JwtAuthenticatedRequest, res: Response): Promise<void> {
     const { userId } = req.params;
+    const { fee_type, fee_value } = req.body || {};
 
     try {
       const userResult = await db.query('SELECT * FROM users WHERE id = $1', [userId]);
@@ -238,7 +242,10 @@ export class AdminKycController {
         return;
       }
 
-      // Create Korapay subaccount
+      const finalFeeType = fee_type || user.fee_type || 'percentage';
+      const finalFeeValue = fee_value !== undefined && fee_value !== null ? fee_value : (user.fee_value || 1.5);
+
+      // Create merchant subaccount
       let subaccountCode = user.korapay_subaccount_code || user.paystack_subaccount_code;
       let accountName = user.account_name || user.business_name;
 
@@ -265,24 +272,53 @@ export class AdminKycController {
           account_name = $2,
           api_key_hash = $3,
           api_key = $4,
+          fee_type = $5,
+          fee_value = $6,
           api_key_generated_at = NOW(),
           kyc_approved_at = NOW()
-        WHERE id = $5`,
-        [subaccountCode, accountName, keyHash, rawKey, userId]
+        WHERE id = $7`,
+        [subaccountCode, accountName, keyHash, rawKey, finalFeeType, finalFeeValue, userId]
       );
 
       res.status(200).json({
         status: true,
-        message: `Merchant ${user.business_name} has been approved and activated with Korapay.`,
+        message: `Merchant ${user.business_name} has been approved and activated.`,
         data: {
           merchant_id: userId,
-          korapay_subaccount_code: subaccountCode,
+          subaccount_code: subaccountCode,
+          fee_type: finalFeeType,
+          fee_value: finalFeeValue,
           api_key: rawKey,
         },
       });
     } catch (error: any) {
       console.error('KYC approval error:', error);
       res.status(500).json({ status: false, message: `KYC approval failed: ${error.message}` });
+    }
+  }
+
+  /**
+   * POST /v1/admin/merchants/:userId/fee
+   * Updates platform fee model for a merchant (Admin only).
+   */
+  public static async updateMerchantFee(req: JwtAuthenticatedRequest, res: Response): Promise<void> {
+    const { userId } = req.params;
+    const { fee_type, fee_value } = req.body;
+
+    if (!fee_type || fee_value === undefined) {
+      res.status(400).json({ status: false, message: 'fee_type and fee_value parameters are required' });
+      return;
+    }
+
+    try {
+      await db.query(
+        'UPDATE users SET fee_type = $1, fee_value = $2 WHERE id = $3',
+        [fee_type, fee_value, userId]
+      );
+      res.status(200).json({ status: true, message: 'Merchant platform fee updated successfully' });
+    } catch (error: any) {
+      console.error('Update merchant fee error:', error);
+      res.status(500).json({ status: false, message: 'Failed to update merchant fee' });
     }
   }
 

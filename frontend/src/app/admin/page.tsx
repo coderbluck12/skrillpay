@@ -21,6 +21,18 @@ export default function AdminPage() {
   const [copiedKey, setCopiedKey] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Admin Fee Control State
+  const [editFeeType, setEditFeeType] = useState<'percentage' | 'flat'>('percentage');
+  const [editFeeValue, setEditFeeValue] = useState<number>(1.5);
+  const [feeUpdating, setFeeUpdating] = useState(false);
+
+  useEffect(() => {
+    if (selectedMerchant) {
+      setEditFeeType(selectedMerchant.fee_type || 'percentage');
+      setEditFeeValue(Number(selectedMerchant.fee_value) || 1.5);
+    }
+  }, [selectedMerchant]);
+
   useEffect(() => {
     if (!isLoading && (!isAuthenticated || !merchant?.is_admin)) {
       router.replace('/dashboard');
@@ -63,11 +75,11 @@ export default function AdminPage() {
   };
 
   const handleApprove = async (userId: string, businessName: string) => {
-    if (!confirm(`Approve KYC for ${businessName}? This will create their subaccount and generate their API key.`)) return;
+    if (!confirm(`Approve KYC for ${businessName}? Platform fee will be set to ${editFeeValue}${editFeeType === 'percentage' ? '%' : ' NGN'}.`)) return;
     setActionLoading(userId);
     setError(null);
     try {
-      const result = await ApiClient.adminApproveKyc(userId);
+      const result = await ApiClient.adminApproveKyc(userId, { fee_type: editFeeType, fee_value: editFeeValue });
       if (!result.status) throw new Error(result.message);
       setApprovedKey({ userId, key: result.data.api_key });
       await fetchData();
@@ -75,6 +87,20 @@ export default function AdminPage() {
       setError(`Approval failed: ${err.message}`);
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const handleUpdateFee = async (userId: string) => {
+    setFeeUpdating(true);
+    try {
+      const res = await ApiClient.adminUpdateMerchantFee(userId, { fee_type: editFeeType, fee_value: editFeeValue });
+      if (!res.status) throw new Error(res.message);
+      alert('Merchant fee updated successfully!');
+      await fetchData();
+    } catch (err: any) {
+      alert(`Fee update failed: ${err.message}`);
+    } finally {
+      setFeeUpdating(false);
     }
   };
 
@@ -187,10 +213,10 @@ export default function AdminPage() {
             <div className="space-y-3 text-sm">
               {Object.entries({
                 'Status': <span className={statusBadge(selectedMerchant.kyc_status)}>{selectedMerchant.kyc_status}</span>,
-                'Bank Account': selectedMerchant.bank_account_number || '—',
-                'Bank Code': selectedMerchant.bank_code || '—',
-                'KYC Provider': selectedMerchant.kyc_provider || '—',
-                'Submitted At': selectedMerchant.kyc_submitted_at ? new Date(selectedMerchant.kyc_submitted_at).toLocaleString() : '—',
+                'Bank Account': selectedMerchant.bank_account_number || 'N/A',
+                'Bank Code': selectedMerchant.bank_code || 'N/A',
+                'KYC Provider': selectedMerchant.kyc_provider || 'N/A',
+                'Submitted At': selectedMerchant.kyc_submitted_at ? new Date(selectedMerchant.kyc_submitted_at).toLocaleString() : 'N/A',
               }).map(([k, v]) => (
                 <div key={k} className="flex justify-between py-2 border-b border-slate-800/60">
                   <span className="text-slate-400">{k}</span>
@@ -205,6 +231,44 @@ export default function AdminPage() {
                   </pre>
                 </div>
               )}
+
+              {/* Admin Platform Fee Settings Control */}
+              <div className="mt-4 p-4 rounded-xl bg-slate-900/80 border border-slate-800 space-y-3">
+                <p className="text-xs font-bold text-sky-400 uppercase tracking-wider">Admin Platform Fee Settings</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-1">Fee Model</label>
+                    <select
+                      value={editFeeType}
+                      onChange={(e: any) => setEditFeeType(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-xs text-white"
+                    >
+                      <option value="percentage">Percentage (%)</option>
+                      <option value="flat">Flat Rate (NGN)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-1">Fee Value ({editFeeType === 'percentage' ? '%' : '₦'})</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      value={editFeeValue}
+                      onChange={(e) => setEditFeeValue(parseFloat(e.target.value))}
+                      className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-800 text-xs text-white"
+                    />
+                  </div>
+                </div>
+                {selectedMerchant.kyc_status === 'active' && (
+                  <button
+                    onClick={() => handleUpdateFee(selectedMerchant.id)}
+                    disabled={feeUpdating}
+                    className="w-full py-2 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs font-bold transition-all disabled:opacity-50"
+                  >
+                    {feeUpdating ? 'Updating...' : 'Update Platform Fee'}
+                  </button>
+                )}
+              </div>
             </div>
             <div className="flex gap-3 mt-6">
               {selectedMerchant.kyc_status === 'kyc_submitted' && (
@@ -296,9 +360,9 @@ export default function AdminPage() {
                     </td>
                     <td className="px-6 py-4 text-slate-400 text-xs">{m.email}</td>
                     <td className="px-6 py-4"><span className={statusBadge(m.kyc_status)}>{m.kyc_status}</span></td>
-                    <td className="px-6 py-4 text-slate-400 text-xs font-mono">{m.bank_account_number ? `****${String(m.bank_account_number).slice(-4)}` : '—'}</td>
+                    <td className="px-6 py-4 text-slate-400 text-xs font-mono">{m.bank_account_number ? `****${String(m.bank_account_number).slice(-4)}` : 'N/A'}</td>
                     <td className="px-6 py-4 text-slate-500 text-xs">
-                      {m.kyc_submitted_at ? new Date(m.kyc_submitted_at).toLocaleDateString() : '—'}
+                      {m.kyc_submitted_at ? new Date(m.kyc_submitted_at).toLocaleDateString() : 'N/A'}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex gap-2">
