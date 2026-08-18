@@ -1,4 +1,4 @@
-# Layman Testing Guide
+# Testing Guide
 
 A simple step-by-step guide for non-technical testers to exercise the Skrillpay web app. 
 
@@ -128,5 +128,3 @@ Notes for the project owner (technical)
 - If signup requires BVN/NIN or bank credentials, tell me what fields appear so I can update this guide to instruct testers what to do.
 
 ---
-
-If you want this file committed somewhere else (e.g., docs/ or the README), tell me and I will move it. Otherwise I will commit this as `LAYMAN_TESTING.md` in the repo root.
