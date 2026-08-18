@@ -1,6 +1,6 @@
 # Layman Testing Guide
 
-A simple step-by-step guide for non-technical testers to exercise the Skrillpay web app. Give this file to a tester (copy/paste or print). Ask them to follow each step in order, take screenshots, and fill the bug report template if anything goes wrong.
+A simple step-by-step guide for non-technical testers to exercise the Skrillpay web app. 
 
 Live site
 - Open this URL in a browser: https://skrillpay-mu.vercel.app
@@ -10,13 +10,8 @@ Before you start
 - Open a private/incognito browser window if possible to avoid signed‑in accounts being reused.
 - Have a screenshot tool ready (phone camera, OS screenshot, or browser screenshot).
 
-Tester account
-- If the site allows signup, testers can create their own account:
-  - Email: tester+1@example.com
-  - Password: Test@1234
-- If the project owner gives you a demo/test account, use that instead.
 
-Part A — First impressions (what a new visitor sees)
+Part A — First impressions
 1. Open the home page
    - URL: https://skrillpay-mu.vercel.app
    - Wait for the page to load.
@@ -31,7 +26,7 @@ Part A — First impressions (what a new visitor sees)
 Part B — Create an account and login
 1. Sign up
    - Click "Sign up" or "Create account" on the site.
-   - Use the tester email and password above, or your own email.
+   - Use your own email and password 
    - Expected: A success message like "Account created" or an email confirmation prompt.
    - If the site requests identity (BVN/NIN) or bank details during signup, stop and take a screenshot — do not enter real personal information.
    - Action: Screenshot the signup success message or any KYC step.
@@ -88,11 +83,6 @@ Part E — Error handling test (optional, if sandbox supports)
 1. Try entering an invalid card number (only in sandbox/test mode)
    - Expected: The app shows a clear error message like "Card declined" or "Invalid card number".
    - Action: Screenshot the error message.
-
-Part F — Email receipt (if the app sends emails)
-1. Check the inbox of the buyer email (buyer+1@example.com or your real email)
-   - Expected: A receipt email arrives with transaction details.
-   - Action: Screenshot the email subject and the email body (or forwarding preview).
 
 Part G — Admin panel (if available and you have access)
 1. Visit the admin area: https://skrillpay-mu.vercel.app/admin
